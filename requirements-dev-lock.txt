@@ -73,7 +73,7 @@ pip-requirements-parser==32.0.1
     # via pip-audit
 platformdirs==4.14.3
     # via pip-audit
-playwright==1.55.0
+playwright==1.64.1
     # via -r requirements-browser.txt
 pluggy==1.7.0
     # via
