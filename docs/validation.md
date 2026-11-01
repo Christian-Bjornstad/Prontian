@@ -56,6 +56,12 @@ platform-specific paths. No new skips were added to make checks pass.
   that table zoom was restored. These preserve the original behavior assertions.
 
 See [performance](performance.md) for baseline/intermediate/final measurements.
+
+The PDF inspection test dependency was updated from pypdf 6.16.2 to 6.21.4 after
+the repository security scan identified parser denial-of-service advisories.
+The seven focused PDF/presentation tests passed with the patched version.
+See the [upstream security release](https://github.com/py-pdf/pypdf/releases/tag/6.21.4).
+
 See [contributing](../CONTRIBUTING.md) for repeatable verification commands.
 The public CI badge links to Windows/Linux, browser and quality results for each
 published commit. Site-specific SMB/Citrix performance and restore/clinical

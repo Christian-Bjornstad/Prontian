@@ -18,6 +18,7 @@
 - Add Python/JavaScript lint and formatting, dependency locks/audits, complete
   source-file documentation and architecture/database/review Mermaid diagrams.
 - Add Windows/Linux and browser CI, documentation checks and operations guidance.
+- Update the PDF test reader to pypdf 6.21.4 after reviewing its security fixes.
 
 Earlier application history is available in the original PRONTO project.
 The inherited application version is 0.8.0; no release tag is implied here.
