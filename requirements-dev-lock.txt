@@ -84,7 +84,9 @@ py-serializable==2.1.0
 pyee==13.0.1
     # via playwright
 pygments==2.21.0
-    # via rich
+    # via
+    #   pytest
+    #   rich
 pyparsing==3.3.3
     # via pip-requirements-parser
 pypdf==6.21.4
@@ -101,7 +103,7 @@ pyqt6-sip==13.13.0
     # via pyqt6
 pysam==0.24.1 ; sys_platform != 'win32'
     # via -r requirements.txt
-pytest==7.4.3
+pytest==9.2.0
     # via
     #   -r requirements-test.txt
     #   pytest-django

@@ -16,6 +16,7 @@ This record covers software verification, not institutional clinical approval.
 | Complete code reference | 251 owned source files documented |
 | Database model/migration consistency | No changes detected |
 | Runtime dependency audit | No known vulnerabilities found |
+| Complete Python development dependency audit | No known vulnerabilities found after security updates |
 | Node development dependency audit | Zero vulnerabilities |
 | Clean resolved environment | `pip check` passed; retired dependencies removed |
 | FELLES installer import smoke check | Passed against the clean environment |
@@ -61,6 +62,11 @@ The PDF inspection test dependency was updated from pypdf 6.16.2 to 6.21.4 after
 the repository security scan identified parser denial-of-service advisories.
 The seven focused PDF/presentation tests passed with the patched version.
 See the [upstream security release](https://github.com/py-pdf/pypdf/releases/tag/6.21.4).
+
+Pytest was updated to 9.2.0 after reviewing the temporary-directory advisory
+[GHSA-6w46-j5rx-g56g](https://github.com/advisories/GHSA-6w46-j5rx-g56g) and the
+[upstream release notes](https://github.com/pytest-dev/pytest/releases/tag/9.2.0).
+CI audits the complete development lock, including the runtime dependency graph.
 
 See [contributing](../CONTRIBUTING.md) for repeatable verification commands.
 The public CI badge links to Windows/Linux, browser and quality results for each

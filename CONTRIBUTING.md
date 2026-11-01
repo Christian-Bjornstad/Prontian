@@ -44,6 +44,7 @@ $env:PRONTO_BROWSER_EXECUTABLE = (& .\.venv\Scripts\python.exe -c "from playwrig
 
 # Dependency checks
 .\.venv\Scripts\python.exe -m pip_audit -r requirements-lock.txt
+.\.venv\Scripts\python.exe -m pip_audit -r requirements-dev-lock.txt
 npm audit --audit-level=moderate
 ```
 
