@@ -51,6 +51,9 @@ platform-specific paths. No new skips were added to make checks pass.
 - Full browser execution exposed hidden compact clinical-class controls; the
   control remains visible and technical detail workflows explicitly select Full
   table. Tests preserve duplicate identity, comments, filtering and exported state.
+- Linux browser checks normalize PDF font ligatures before comparing every
+  required heading, and wait for the native dialog close event before asserting
+  that table zoom was restored. These preserve the original behavior assertions.
 
 See [performance](performance.md) for baseline/intermediate/final measurements.
 See [contributing](../CONTRIBUTING.md) for repeatable verification commands.

@@ -3,6 +3,7 @@
 import json
 import os
 import shutil
+import unicodedata
 from contextlib import contextmanager
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -283,6 +284,9 @@ def test_keyboard_table_plots_focus_and_print(browser):
             printed = "\n".join(
                 page.extract_text() or "" for page in pypdf.PdfReader(BytesIO(pdf)).pages
             )
+            # Linux fonts may emit ligature characters such as U+FB01 in PDF
+            # text extraction. Compare semantic text, retaining every heading.
+            printed = unicodedata.normalize("NFKC", printed)
             for heading in (
                 "Key findings",
                 "Variant review",
