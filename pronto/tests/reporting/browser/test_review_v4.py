@@ -43,7 +43,7 @@ def test_manual_cnv_zoom_qc_and_download_share_one_working_copy(browser):
         assert dialog.locator("output").inner_text() == "125%"
         dialog.get_by_role("button", name="Close table", exact=True).click()
         # The native dialog close event restores the moved table asynchronously.
-        page.wait_for_function("document.getElementById('test-cnv').style.zoom === ''")
+        playwright.expect(page.locator("#test-cnv")).to_have_css("zoom", "1")
         assert page.locator("#test-cnv").evaluate("(table)=>table.style.zoom") == ""
         assert (
             page.locator("#test-cnv tbody tr")
