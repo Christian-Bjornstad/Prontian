@@ -1,0 +1,19 @@
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.cmd text eol=crlf
+*.png binary
+*.ico binary
+*.pdf binary
+*.bam binary
+*.bai binary
+# Preserve approved tabular source bytes, including trailing empty TSV cells.
+# These are parser fixtures, not code to be whitespace-normalized.
+test_data/** -text -whitespace

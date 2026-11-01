@@ -1,0 +1,24 @@
+# Information contained within this file is intended for use in automated creation of InPreD mol-MDT report (the PRONTO image).																						
+# Each data row is meant for describing the meta-information of a single DNA or RNA sample sequenced with the TSO500 assay and post-processed with the TSOPPI package.																						
+# - If TSOPPI is run with matching DNA and RNA, information from both DNA and RNA will be printed into the mol-MDT report.																						
+# - Please use ""-"" to represent any missing values."																						
+# - Tabulator values should be used for separating individual columns.																						
+# - The meta-information will be used as-is.																						
+# Overview of individual columns and their expected values (columns marked with ""[REQ]"" are required for mol-MDT report creation; columns without this tag are optional):"																						
+# - [REQ] ""Sample_id"": sample identifier as used in TSOPPI post-processing; the ID should follow the InPreD sample ID nomenclature;"																						
+# - [REQ] ""Sequencing_run_id"": sequencing run identifier as used in TSOPPI post-processing;"																						
+# - [REQ] ""Create_report"": mol-MDT reports will only be created for DNA samples with value ""Y"" in this column; expected values for DNA [""Y"", ""N""]; and for RNA ""-"";"																						
+# - ""Year_of_birth"": patient's year of birth; in integer format;"																						
+# - ""Year_of_diagnosis"": year of disease diagnosis; in integer format;"																						
+# - ""Clinical_diagnosis"": disease diagnosis (not limited to the PCGR tumor site classification); in string format;"																						
+# - ""Sex"": patient sex; expected values: [""M"", ""F""];"																						
+# - ""Study_id"": sample/patient study identifier, e.g., an IMPRESS id; in string format;"																						
+# - ""Sample_material_id"": sample material identifier as documented in the pathology system; in string format;"																						
+# - ""Year_of_sample_collection"": year of sample material collection; in integer format;"																						
+# - ""Requisition_hospital"": hospital requiring the InPreD sample analysis; in string format;"																						
+# - ""Extraction_hospital"": hospital undertaking the sample extraction; in string format."																						
+# - ""Tumor_content_pathology"": tumor content in percent estimated by the pathologist; not necessarily the value used in TSOPPI and written into the mol-MDT report;"																						
+# - ""Batch"": batch information from the wet lab."																						
+Sample_id	Sequencing_run_id	Create_report	Year_of_birth	Year_of_diagnosis	Clinical_diagnosis	Sex	Study_id	Sample_material_id	Year_of_sample_collection	Requisition_hospital	Extraction_hospital	Tumor_content_pathology	Batch	Material	Sample_type	Cancer_type_PCGR	TMB_inpred_in_house	TMB_TSO500	MSI_TSO500	Version_string_TSOPPI_reported_on_mol-MDT	Molecular_pathology_comment	Sample_info_comment
+IPD2225-D01-P01-A08	251114_A02134_0115_BHCJCKDRX7	-	1960	-	-	M	MRARE-X-xxxx	25materialX	-	OUS	 OUS	50	201	Archived FFPE	Primary tumor naive	CNS/Brain	17	14.9 (19)	4.13 (5/121)	2.2.0.12/0.3.2:22-06-07/1.0.0/1.0.0/hg19/TR	Comment_pathy	Comment_sample
+IPD2225-R03-P01-A08	251114_A02134_0115_BHCJCKDRX7	-	1960	-	-	M	MRARE-X-xxxx	25materialX	-	OUS	 OUS	50	201	Archived FFPE	Primary tumor naive	CNS/Brain	-	-	-	-	Comment_pathy	Comment_sample

@@ -1,0 +1,615 @@
+"""Authorize first, then validate and render or save report review snapshots."""
+
+import json
+import os
+import stat
+
+from django.conf import settings
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
+from django.db.models import ObjectDoesNotExist
+from django.http import Http404, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.middleware.csrf import get_token
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
+
+from pronto_report.migration import migrate_review_state_to_v3
+from pronto_report.renderers.assets import load_plot_images_from_bytes
+from pronto_report.renderers.display_copy import patient_display
+from pronto_report.renderers.html import render_html
+from pronto_report.review.contracts import (
+    FinalizeRequest,
+    ResetDraftRequest,
+    ReviewCommandError,
+    SaveDraftRequest,
+)
+from pronto_report.review.service import ReviewCommandService
+from pronto_report.validation import validate_report_data, validate_review_state
+from pronto_web.reports.alignment_commands import (
+    MAX_CHUNK_BYTES,
+    AlignmentConflict,
+    AlignmentSessionClosed,
+    accept_chunk,
+    authorized_upload_session,
+    begin_local_save,
+    cancel_local_save,
+    complete_local_save,
+    delete_saved,
+    preserve_registered,
+    require_alignment_write,
+)
+from pronto_web.reports.alignment_config import alignment_saving_enabled
+from pronto_web.reports.alignment_ranges import (
+    RangeNotSatisfiable,
+    iter_range,
+    parse_single_range,
+    parse_upload_range,
+)
+from pronto_web.reports.alignment_registry import (
+    InvalidAlignmentRegistry,
+    lookup_registered,
+    lookup_saved,
+)
+from pronto_web.reports.alignment_store import StorageLimitError, UnsafeAlignmentPath
+from pronto_web.reports.models import ReportGrant, ReportRecord, ReportWriteGrant, ReviewRevision
+from pronto_web.reports.review_repository import DjangoReviewAuthorizer, DjangoReviewRepository
+
+MAX_REVIEW_COMMAND_BYTES = 1024 * 1024
+
+
+@require_GET
+def report_index(request) -> HttpResponse:
+    if not request.user.is_authenticated or not request.user.is_active:
+        response = redirect_to_login(request.get_full_path())
+        response["Cache-Control"] = "no-store"
+        return response
+    reports = (
+        ReportRecord.objects.filter(grants__user=request.user)
+        .prefetch_related("reviews__hidden_record", "review_audits")
+        .order_by("report_id")
+    )
+    page = Paginator(reports, 25).get_page(request.GET.get("page"))
+    entries = []
+    from .models import WorkingDraft
+
+    active = (
+        {row.report_id: row for row in WorkingDraft.objects.filter(report__in=page)}
+        if settings.PRONTO_WORKING_DRAFTS
+        else {}
+    )
+    for record in page:
+        revisions = sorted(
+            (r for r in record.reviews.all() if not hasattr(r, "hidden_record")),
+            key=lambda r: r.revision,
+            reverse=True,
+        )
+        latest = active.get(record.pk) or (revisions[0] if revisions else None)
+        status = (
+            "reviewed"
+            if latest and latest.review_data["status"] == "FINAL"
+            else "under-review"
+            if record.pk in active
+            or any(a.action == "SAVE_DRAFT" for a in record.review_audits.all())
+            else "un-reviewed"
+        )
+        entries.append(
+            {
+                "reportId": record.pk,
+                "sample": patient_display(record.report_data["sample"]),
+                "status": status,
+                "revisions": revisions,
+                "working": active.get(record.pk),
+                "latestFinal": next(
+                    (r for r in revisions if r.review_data["status"] == "FINAL"), None
+                ),
+                "updatedAt": latest.review_data.get("updatedAt") if latest else None,
+            }
+        )
+    from .user_management import is_administrator
+
+    response = render(
+        request,
+        "reports/index.html",
+        {"entries": entries, "page": page, "can_administer": is_administrator(request.user)},
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@require_GET
+def report_detail(request, report_id: str) -> HttpResponse:
+    if not request.user.is_authenticated or not request.user.is_active:
+        return HttpResponse(status=401)
+    grant = get_object_or_404(
+        ReportGrant.objects.select_related("report"),
+        report_id=report_id,
+        user=request.user,
+    )
+    record = grant.report
+    report = validate_report_data(record.report_data)
+    if report.report_id != record.report_id:
+        raise ValueError("Stored report identifier does not match its record")
+    historical = "revision" in request.GET
+    revisions = ReviewRevision.objects.filter(report=record)
+    if historical:
+        requested = request.GET.get("revision", "")
+        if not requested.isdecimal() or int(requested) < 1:
+            raise Http404
+        latest = get_object_or_404(revisions, revision=int(requested))
+    else:
+        latest = revisions.order_by("-revision").first()
+    review = validate_review_state(latest.review_data, report=report) if latest else None
+    if latest is not None and review.revision != latest.revision:
+        raise ValueError("Stored review revision does not match its record")
+    needs_upgrade = (
+        review is not None
+        and review.status == "DRAFT"
+        and review.schema_version != "3.0"
+        and not historical
+    )
+    if review is not None and not historical:
+        review = migrate_review_state_to_v3(review)
+    working_version = 0
+    if settings.PRONTO_WORKING_DRAFTS and not historical:
+        from .working_drafts import current_working
+
+        review, working_version = current_working(record, report)
+        if review and review.status == "FINAL":
+            from pronto_report.review.source_defaults import upgrade_review
+
+            review = upgrade_review(report, review, seed_defaults=False)
+    blobs = {asset.asset_id: bytes(asset.content) for asset in record.assets.all()}
+    plot_images = load_plot_images_from_bytes(report, blobs)
+    try:
+        pairs = lookup_registered(
+            record.report_id, str(report.sample["sampleId"]), str(report.sample["referenceBuild"])
+        )
+    except InvalidAlignmentRegistry:
+        pairs = ()
+        registry_error = True
+    else:
+        registry_error = False
+    try:
+        saved_pairs = lookup_saved(
+            record.report_id, str(report.sample["sampleId"]), str(report.sample["referenceBuild"])
+        )
+    except InvalidAlignmentRegistry:
+        saved_pairs = ()
+        registry_error = True
+    sources = tuple(
+        {
+            "sourceId": pair.source_id,
+            "role": pair.role,
+            "format": pair.format,
+            "referenceBuild": pair.reference_build,
+            "dataURL": f"/reports/{record.report_id}/alignments/{pair.source_id}/data/",
+            "indexURL": f"/reports/{record.report_id}/alignments/{pair.source_id}/index/",
+        }
+        for pair in (*pairs, *saved_pairs)
+    )
+    references = {
+        build: value
+        for build, value in settings.PRONTO_IGV_REFERENCES.items()
+        if all(value.values())
+    }
+    csrf_token = get_token(request)
+    draft = review is not None and review.status == "DRAFT" and not historical
+    saved_view = review is not None and not historical
+    html = render_html(
+        report,
+        review,
+        plot_images=plot_images,
+        inline_assets=True,
+        snapshot=historical,
+        save_url=reverse(
+            "working-command" if settings.PRONTO_WORKING_DRAFTS else "review-save",
+            args=[record.report_id],
+        )
+        if draft
+        else None,
+        finalize_url=reverse(
+            "working-command" if settings.PRONTO_WORKING_DRAFTS else "review-finalize",
+            args=[record.report_id],
+        )
+        if draft
+        else None,
+        reset_url=reverse(
+            "working-command" if settings.PRONTO_WORKING_DRAFTS else "review-reset",
+            args=[record.report_id],
+        )
+        if draft
+        else None,
+        csrf_token=csrf_token,
+        require_initials=getattr(settings, "PRONTO_REQUIRE_INITIALS", False),
+        print_url=reverse("report-print", args=[record.report_id]) if saved_view else None,
+        html_export_url=reverse("report-html-export", args=[record.report_id])
+        if saved_view
+        else None,
+        pdf_export_url=reverse("report-pdf-export", args=[record.pk]) if saved_view else None,
+        figure_upload_url=reverse("presentation-upload", args=[record.pk]) if draft else None,
+        figure_assets={
+            str(f.pk): bytes(f.content)
+            for f in record.presentation_figures.all()
+            if review and any(item["figureId"] == str(f.pk) for item in review.presentation_figures)
+        },
+        needs_upgrade=needs_upgrade,
+        actor_id=str(request.user.pk) if draft else None,
+        actor_label=request.user.get_username()
+        if not getattr(settings, "PRONTO_REQUIRE_INITIALS", False)
+        else None,
+        web_igv=not historical,
+        igv_sources=sources if not historical else (),
+        igv_references=references if not historical else {},
+        igv_registry_error=registry_error,
+        igv_save_enabled=(
+            not historical
+            and alignment_saving_enabled(settings)
+            and ReportWriteGrant.objects.filter(report=record, user=request.user).exists()
+        ),
+    )
+    if settings.PRONTO_WORKING_DRAFTS and review:
+        from .working_drafts import current_working
+
+        current, version = current_working(record, report)
+        config = {
+            "url": reverse("working-command", args=[record.pk]),
+            "version": version,
+            "revision": current.revision,
+            "sourceRevision": (review.revision if historical or version else latest.revision),
+            "reportId": record.pk,
+            "csrf": csrf_token,
+        }
+        text = json.dumps(config).replace("<", r"\u003c")
+        label = (
+            "Finalized"
+            if review.status == "FINAL"
+            else "Saved snapshot"
+            if historical
+            else "Working draft"
+        )
+        actions = (
+            f'<div class="working-actions"><span class="working-revision-label" data-snapshot="{str(historical).lower()}">{label} · revision {review.revision}</span>'
+            '<button type="button" id="start-new-revision">Start new revision</button><span id="working-message" role="status"></span></div>'
+        )
+        html = html.replace(
+            "<body>",
+            '<body><script type="application/json" id="working-config">' + text + "</script>",
+        )
+        html = html.replace(
+            '<div class="report-topbar__actions">', '<div class="report-topbar__actions">' + actions
+        )
+
+    response = HttpResponse(html, content_type="text/html; charset=utf-8")
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def _command_request(request, command_type):
+    if request.content_type != "application/json":
+        raise ReviewCommandError("INVALID_COMMAND", "JSON command required", 422)
+    size = request.META.get("CONTENT_LENGTH", "")
+    if size.isdecimal() and int(size) > MAX_REVIEW_COMMAND_BYTES:
+        raise ReviewCommandError("PAYLOAD_TOO_LARGE", "Review command is too large", 413)
+    raw = request.read(MAX_REVIEW_COMMAND_BYTES + 1)
+    if len(raw) > MAX_REVIEW_COMMAND_BYTES:
+        raise ReviewCommandError("PAYLOAD_TOO_LARGE", "Review command is too large", 413)
+    try:
+        payload = json.loads(raw)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ReviewCommandError("INVALID_COMMAND", "Invalid JSON command", 422) from exc
+    return command_type.from_dict(payload)
+
+
+def _review_error(exc: ReviewCommandError) -> JsonResponse:
+    response = JsonResponse(exc.as_dict(), status=exc.http_status)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def _review_command(request, report_id: str, command_type, action: str) -> HttpResponse:
+    if not request.user.is_authenticated or not request.user.is_active:
+        return _review_error(ReviewCommandError("UNAUTHENTICATED", "Authentication required", 401))
+    if settings.PRONTO_WORKING_DRAFTS:
+        return _review_error(
+            ReviewCommandError(
+                "CLIENT_UPGRADE_REQUIRED", "Reload to use the current working draft.", 409
+            )
+        )
+    grant = (
+        ReportGrant.objects.select_related("report")
+        .filter(
+            report_id=report_id,
+            user=request.user,
+        )
+        .first()
+    )
+    if grant is None:
+        return _review_error(ReviewCommandError("REVIEW_NOT_FOUND", "Report not found", 404))
+    report = validate_report_data(grant.report.report_data)
+    if report.report_id != grant.report_id:
+        raise ValueError("Stored report identifier does not match its record")
+    try:
+        command = _command_request(request, command_type)
+        service = ReviewCommandService(
+            DjangoReviewRepository(grant.report, report),
+            DjangoReviewAuthorizer(request.user),
+            clock=timezone.now,
+            require_initials=getattr(settings, "PRONTO_REQUIRE_INITIALS", False),
+            actor_label=request.user.get_username()
+            if not getattr(settings, "PRONTO_REQUIRE_INITIALS", False)
+            else None,
+        )
+        result = getattr(service, action)(command, actor_id=str(request.user.pk), report=report)
+    except ReviewCommandError as exc:
+        return _review_error(exc)
+    else:
+        response = JsonResponse(result.as_dict(), status=201)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@require_GET
+def alignment_component(request, report_id: str, source_id: str, component: str) -> HttpResponse:
+    if not request.user.is_authenticated or not request.user.is_active:
+        return HttpResponse(status=401)
+    grant = get_object_or_404(
+        ReportGrant.objects.select_related("report"),
+        report_id=report_id,
+        user=request.user,
+    )
+    if component not in {"data", "index"}:
+        return HttpResponse(status=404)
+    record = grant.report
+    report = validate_report_data(record.report_data)
+    if report.report_id != record.report_id:
+        return HttpResponse(status=404)
+    try:
+        matching = lookup_saved if source_id.startswith("saved-") else lookup_registered
+        pair = next(
+            (
+                pair
+                for pair in matching(
+                    report_id,
+                    str(report.sample["sampleId"]),
+                    str(report.sample["referenceBuild"]),
+                )
+                if pair.source_id == source_id
+            ),
+            None,
+        )
+    except InvalidAlignmentRegistry:
+        return HttpResponse(status=404)
+    if pair is None:
+        return HttpResponse(status=404)
+    path = pair.data_path if component == "data" else pair.index_path
+    try:
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        handle = os.fdopen(descriptor, "rb")
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            handle.close()
+            return HttpResponse(status=404)
+        size = os.fstat(handle.fileno()).st_size
+    except OSError:
+        return HttpResponse(status=404)
+    try:
+        if not request.headers.get("Range"):
+            if component == "data" or size > 8 * 1024 * 1024:
+                raise RangeNotSatisfiable("range required")
+            start, end = 0, size - 1
+            status = 200
+        else:
+            start, end = parse_single_range(request.headers["Range"], size)
+            status = 206
+    except ValueError:  # Includes malformed ranges and oversized integer fields.
+        handle.close()
+        response = HttpResponse(status=416)
+        response["Content-Range"] = f"bytes */{size}"
+        response["Accept-Ranges"] = "bytes"
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+    response = StreamingHttpResponse(
+        iter_range(handle, start, end) if size else iter_range(handle, 0, -1),
+        status=status,
+        content_type="application/octet-stream",
+    )
+    if status == 206:
+        response["Content-Range"] = f"bytes {start}-{end}/{size}"
+    response["Accept-Ranges"] = "bytes"
+    response["Content-Length"] = str(end - start + 1)
+    response["Cache-Control"] = "no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+def _write_report(request, report_id: str) -> ReportRecord:
+    if not request.user.is_authenticated or not request.user.is_active:
+        raise PermissionDenied
+    grant = get_object_or_404(
+        ReportGrant.objects.select_related("report"), report_id=report_id, user=request.user
+    )
+    require_alignment_write(request.user, grant.report)
+    return grant.report
+
+
+def _small_json(request) -> dict:
+    if request.content_type != "application/json":
+        raise ValueError("JSON required")
+    raw = request.read(4097)
+    if len(raw) > 4096:
+        raise StorageLimitError("metadata too large")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("JSON object required")
+    return payload
+
+
+def _save_error(exc: Exception) -> HttpResponse:
+    if isinstance(exc, (AlignmentConflict, AlignmentSessionClosed)):
+        status = 409
+    elif isinstance(exc, (RangeNotSatisfiable,)):
+        status = 416
+    elif isinstance(exc, StorageLimitError):
+        status = 413
+    elif isinstance(exc, PermissionDenied):
+        status = 403
+    elif isinstance(exc, ObjectDoesNotExist):
+        status = 404
+    elif isinstance(exc, (OSError, UnsafeAlignmentPath)):
+        status = 507
+    else:
+        status = 400
+    response = JsonResponse(
+        {
+            "error": {
+                400: "invalid_alignment_request",
+                403: "forbidden",
+                404: "not_found",
+                409: "alignment_conflict",
+                413: "alignment_too_large",
+                416: "invalid_range",
+                507: "storage_unavailable",
+            }[status]
+        },
+        status=status,
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@csrf_protect
+@require_POST
+def save_review_revision(request, report_id: str) -> HttpResponse:
+    return _review_command(request, report_id, SaveDraftRequest, "save")
+
+
+@csrf_protect
+@require_POST
+def reset_review_revision(request, report_id: str) -> HttpResponse:
+    return _review_command(request, report_id, ResetDraftRequest, "reset")
+
+
+@csrf_protect
+@require_POST
+def start_alignment_save(request, report_id: str) -> HttpResponse:
+    report = _write_report(request, report_id)
+    try:
+        payload = _small_json(request)
+        if payload.get("confirmed") is not True:
+            raise ValueError("explicit confirmation required")
+        session = begin_local_save(
+            request.user,
+            report,
+            payload.get("sampleId"),
+            payload.get("referenceBuild"),
+            payload.get("role"),
+            payload.get("format"),
+            {"data": payload.get("dataSize"), "index": payload.get("indexSize")},
+        )
+    except (ValueError, PermissionDenied, OSError) as exc:
+        return _save_error(exc)
+    response = JsonResponse(
+        {"sessionId": str(session.id), "expiresAt": session.expires_at.isoformat()}, status=201
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@csrf_protect
+@require_http_methods(["PUT"])
+def upload_alignment_chunk(request, report_id: str, session_id, component: str) -> HttpResponse:
+    report = _write_report(request, report_id)
+    try:
+        # Authorization precedes any read of the potentially large request body.
+        authorized_upload_session(request.user, report, session_id)
+        start, end, total = parse_upload_range(
+            request.headers.get("Content-Range", ""), MAX_CHUNK_BYTES
+        )
+        if component not in {"data", "index"}:
+            raise Http404
+        if request.META.get("CONTENT_LENGTH") != str(end - start + 1):
+            raise RangeNotSatisfiable("body length differs from range")
+        offset = accept_chunk(
+            request.user, session_id, component, start, total, request, report=report
+        )
+    except Http404:
+        raise
+    except (ValueError, PermissionDenied, ObjectDoesNotExist, OSError) as exc:
+        return _save_error(exc)
+    response = HttpResponse(status=204)
+    response["Upload-Offset"] = str(offset)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@csrf_protect
+@require_POST
+def finalize_review(request, report_id: str) -> HttpResponse:
+    return _review_command(request, report_id, FinalizeRequest, "finalize")
+
+
+@csrf_protect
+@require_POST
+def complete_alignment_save(request, report_id: str, session_id) -> HttpResponse:
+    report = _write_report(request, report_id)
+    try:
+        session = authorized_upload_session(request.user, report, session_id)
+        payload = _small_json(request)
+        saved = complete_local_save(
+            request.user, session_id, payload.get("referenceBuild"), report=report
+        )
+    except (ValueError, PermissionDenied, ObjectDoesNotExist, OSError) as exc:
+        return _save_error(exc)
+    response = JsonResponse(
+        {"savedId": str(saved.id), "sourceId": f"saved-{saved.id.hex}"},
+        status=200 if session.state == "COMPLETED" else 201,
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@csrf_protect
+@require_http_methods(["DELETE"])
+def cancel_alignment_save(request, report_id: str, session_id) -> HttpResponse:
+    report = _write_report(request, report_id)
+    try:
+        cancel_local_save(request.user, session_id, report=report)
+    except (ValueError, PermissionDenied, ObjectDoesNotExist, OSError) as exc:
+        return _save_error(exc)
+    return HttpResponse(status=204)
+
+
+@csrf_protect
+@require_POST
+def preserve_registered_alignment(request, report_id: str, source_id: str) -> HttpResponse:
+    report = _write_report(request, report_id)
+    try:
+        payload = _small_json(request)
+        if payload.get("confirmed") is not True:
+            raise ValueError("explicit confirmation required")
+        saved = preserve_registered(request.user, report, source_id)
+    except (ValueError, PermissionDenied, ObjectDoesNotExist, OSError) as exc:
+        return _save_error(exc)
+    response = JsonResponse(
+        {"savedId": str(saved.id), "sourceId": f"saved-{saved.id.hex}"}, status=201
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@csrf_protect
+@require_http_methods(["DELETE"])
+def delete_saved_alignment(request, report_id: str, saved_id) -> HttpResponse:
+    report = _write_report(request, report_id)
+    try:
+        delete_saved(request.user, report, saved_id)
+    except (ValueError, PermissionDenied, ObjectDoesNotExist, OSError) as exc:
+        return _save_error(exc)
+    return HttpResponse(status=204)

@@ -1,0 +1,3 @@
+#sample_type	sample_ID	sample_pair_ID	sample_output_ID	sample_host_system_run_directory
+DNA_tumor	IPD2225-D01-P01-A08	IPD2225-D01-P01-A08_P	IPD2225-D01-P01-A08	/data/sample_data/analysis_results/251114_A02134_0115_BHCJCKDRX7_TSO_500_LocalApp_results
+RNA_tumor	IPD2225-R03-P01-A08	IPD2225-R03-P01-A08_P	IPD2225-R03-P01-A08	/data/sample_data/analysis_results/251114_A02134_0115_BHCJCKDRX7_TSO_500_LocalApp_results

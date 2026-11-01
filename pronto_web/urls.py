@@ -1,0 +1,95 @@
+"""Route authentication, report review, exports, figures and private IGV resources."""
+
+from django.contrib.auth.views import (
+    LoginView,
+    LogoutView,
+    PasswordChangeDoneView,
+    PasswordChangeView,
+)
+from django.urls import path
+
+from pronto_web.branding import favicon
+from pronto_web.reports.figures import figure_content, upload_figure
+from pronto_web.reports.html_export_audit import html_export_request
+from pronto_web.reports.igv_references import reference_component
+from pronto_web.reports.pdf_export import pdf_export_request
+from pronto_web.reports.print_audit import print_request
+from pronto_web.reports.revision_management import manage_revisions
+from pronto_web.reports.user_management import manage_users
+from pronto_web.reports.views import (
+    alignment_component,
+    cancel_alignment_save,
+    complete_alignment_save,
+    delete_saved_alignment,
+    finalize_review,
+    preserve_registered_alignment,
+    report_detail,
+    report_index,
+    reset_review_revision,
+    save_review_revision,
+    start_alignment_save,
+    upload_alignment_chunk,
+)
+from pronto_web.reports.working_drafts import working_command
+
+urlpatterns = [
+    path("accounts/users/", manage_users, name="manage-users"),
+    path("reports/<str:report_id>/history/", manage_revisions, name="manage-revisions"),
+    path("favicon.ico", favicon, name="pronto-favicon"),
+    path("reports/<str:report_id>/working/", working_command, name="working-command"),
+    path("igv/references/<str:build>/<str:component>/", reference_component, name="igv-reference"),
+    path("", report_index, name="home"),
+    path("reports/<str:report_id>/pdf-exports/", pdf_export_request, name="report-pdf-export"),
+    path("reports/<str:report_id>/figures/", upload_figure, name="presentation-upload"),
+    path(
+        "reports/<str:report_id>/figures/<uuid:figure_id>/",
+        figure_content,
+        name="presentation-figure",
+    ),
+    path("reports/<str:report_id>/print-requests/", print_request, name="report-print"),
+    path("reports/<str:report_id>/html-exports/", html_export_request, name="report-html-export"),
+    path("accounts/login/", LoginView.as_view(), name="login"),
+    path("accounts/logout/", LogoutView.as_view(next_page="/accounts/login/"), name="logout"),
+    path("accounts/password/", PasswordChangeView.as_view(), name="password_change"),
+    path("accounts/password/done/", PasswordChangeDoneView.as_view(), name="password_change_done"),
+    path("reports/", report_index, name="report-index"),
+    path("reports/<str:report_id>/revisions/", save_review_revision, name="review-save"),
+    path("reports/<str:report_id>/resets/", reset_review_revision, name="review-reset"),
+    path("reports/<str:report_id>/finalizations/", finalize_review, name="review-finalize"),
+    path(
+        "reports/<str:report_id>/alignments/save-sessions/",
+        start_alignment_save,
+        name="alignment-save-start",
+    ),
+    path(
+        "reports/<str:report_id>/alignments/save-sessions/<uuid:session_id>/complete/",
+        complete_alignment_save,
+        name="alignment-save-complete",
+    ),
+    path(
+        "reports/<str:report_id>/alignments/save-sessions/<uuid:session_id>/<str:component>/",
+        upload_alignment_chunk,
+        name="alignment-save-chunk",
+    ),
+    path(
+        "reports/<str:report_id>/alignments/save-sessions/<uuid:session_id>/",
+        cancel_alignment_save,
+        name="alignment-save-cancel",
+    ),
+    path(
+        "reports/<str:report_id>/alignments/<uuid:saved_id>/",
+        delete_saved_alignment,
+        name="alignment-saved-delete",
+    ),
+    path(
+        "reports/<str:report_id>/alignments/<str:source_id>/preserve/",
+        preserve_registered_alignment,
+        name="alignment-preserve-registered",
+    ),
+    path(
+        "reports/<str:report_id>/alignments/<str:source_id>/<str:component>/",
+        alignment_component,
+        name="alignment-component",
+    ),
+    path("reports/<str:report_id>/", report_detail, name="report-detail"),
+]

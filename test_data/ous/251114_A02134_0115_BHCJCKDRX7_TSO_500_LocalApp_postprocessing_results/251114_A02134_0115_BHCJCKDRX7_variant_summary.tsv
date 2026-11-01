@@ -1,0 +1,28 @@
+# Field formats:					
+# - TMB: TMB (elligible_variants)					
+# - MSI: percentage_of_unstable_MSI_sites (unstable_MSI_site_count/usable_MSI_site_count)					
+# - gene_amplifications: gene (fold_change)					
+# - splice_variants: gene[affected_exon] (breakpoint_gene_1-breakpoint_gene_2) splice_supporting_reads/reference_reads					
+# - fusions: gene_1-gene_2 (breakpoint_gene_1-breakpoint_gene_2) fusion_supporting_reads/ref_reads_gene_1/ref_reads_gene_2					
+sample_id	TMB	MSI	gene_amplifications	splice_variants	fusions
+IPD2091-D01-N02-A28_P	0.8 (1)	1.04 (1/96)	NA	NA	NA
+IPD2142-D01-d01-A15_P	7.8 (10)	0.88 (1/114)	EGFR (1.509)|ERCC2 (1.597)|ERCC1 (1.545)	NA	NA
+IPD2142-R03-d01-A15_P	NA	NA	NA	NA	NA
+IPD2203-D01-d01-A09_P	10.2 (13)	4.17 (5/120)	EGFR (1.578)|MET (1.580)|BRCA2 (1.424)|LAMP1 (1.493)	NA	NA
+IPD2203-R03-d01-A09_P	NA	NA	NA	NA	NA
+IPD2216-R03-P01-A12_P	NA	NA	NA	NA	NA
+IPD2222-D01-R01-A18_P	3.1 (4)	3.28 (4/122)	MET (1.545)|MYC (1.482)|FGFR2 (1.463)|CCNE1 (1.495)|AKT2 (1.449)	NA	NA
+IPD2222-R03-R01-A18_P	NA	NA	NA	NA	NA
+IPD2223-D01-P01-A08_P	3.1 (4)	2.83 (3/106)	MYCL (1.435)|MYCN (236.886)|PIK3CA (1.559)|EGFR (2.110)|CDK6 (1.924)|MET (2.086)|BRAF (1.943)|FGF23 (1.511)|KRAS (1.476)|CDK4 (95.292)|AKT2 (1.706)	NA	NA
+IPD2223-R03-P01-A08_P	NA	NA	NA	NA	CDK4/PDE3A (chr12:1-chr12:1) 15/31604/396
+IPD2224-D01-P01-A12_P	4.7 (6)	0.00 (0/111)	FGFR1 (1.791)	NA	NA
+IPD2224-R03-P01-A12_P	NA	NA	NA	NA	NA
+IPD2225-D01-P01-A08_P	14.9 (19)	4.13 (5/121)	NA	NA	NA
+IPD2225-R03-P01-A08_P	NA	NA	NA	NA	NA
+IPD2226-D01-P01-A09_P	8.7 (11)	1.85 (2/108)	MDM4 (1.455)|FGF3 (1.948)|FGF9 (1.840)|BRCA2 (1.631)|FGF14 (2.021)|LAMP1 (1.844)	NA	NA
+IPD2226-R03-P01-A09_P	NA	NA	NA	NA	NA
+IPD2227-D01-X01-A08_P	0.8 (1)	0.83 (1/120)	NA	NA	NA
+IPD2234-D01-P01-F25_P	2.4 (3)	2.68 (3/112)	FGFR4 (3.370)|NRG1 (1.711)|FGFR1 (1.788)|MYC (1.703)|FGF23 (1.631)|KRAS (1.539)|ERBB3 (1.517)|CDK4 (1.604)|ERBB2 (1.715)|BRCA1 (1.657)|RPS6KB1 (1.603)|ERCC2 (2.189)	NA	NA
+IPD2234-R03-P01-F25_P	NA	NA	NA	NA	NA
+IPD2243-D01-P01-A28_P	10.2 (13)	5.88 (7/119)	NA	NA	NA
+IPD2243-R03-P01-A28_P	NA	NA	NA	NA	NA
