@@ -97,7 +97,7 @@ pypdfium2==5.14.0
     # via -r requirements.txt
 pyqt6==6.11.0
     # via -r requirements-desktop.txt
-pyqt6-qt6==6.11.2
+pyqt6-qt6==6.12.0
     # via pyqt6
 pyqt6-sip==13.13.0
     # via pyqt6
