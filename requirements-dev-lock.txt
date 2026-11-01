@@ -101,7 +101,7 @@ pyqt6-sip==13.13.0
     # via pyqt6
 pysam==0.24.1 ; sys_platform != 'win32'
     # via -r requirements.txt
-pytest==7.4.3
+pytest==9.2.0
     # via
     #   -r requirements-test.txt
     #   pytest-django
