@@ -17,9 +17,10 @@ from django.views.decorators.http import require_POST
 from pronto_report.renderers.summary_html import render_summary_html
 from pronto_report.review.attribution import normalize_initials
 from pronto_report.review.contracts import ReviewCommandError
-from pronto_report.validation import validate_report_data, validate_review_state
+from pronto_report.validation import validate_review_state
 
 from .models import ReportGrant, ReportHtmlExportAudit, ReportRecord, ReviewRevision
+from .source_versions import load_report
 
 _logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def _record_and_render(
         )
         if row is None:
             raise ReviewCommandError("REVISION_NOT_FOUND", "Saved revision is unavailable", 409)
-        report = validate_report_data(locked.report_data)
+        report = load_report(locked, revision=row.revision)
         if report.report_id != locked.report_id:
             raise ValueError("Stored report identifier mismatch")
         review = validate_review_state(row.review_data, report=report)

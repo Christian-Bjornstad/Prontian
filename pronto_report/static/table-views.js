@@ -18,6 +18,7 @@
     "exclude",
     "reviewnote",
     "manualqc",
+    "technicalqc",
     "sourceqchighlight",
     "igvqc",
     "reviewcomment",
@@ -35,6 +36,8 @@
     "highconfidencegene",
   ]);
   const rna = new Set([
+    "nomenclature",
+    "outcome",
     "genea",
     "geneb",
     "provisionaleventtype",
@@ -62,6 +65,7 @@
     qcverdict: "Source QC",
   };
   function enhance(table) {
+    if (table.hasAttribute("data-fixed-columns")) return;
     if (managed.has(table) || !table.tHead || table.closest("template")) return;
     const headers = Array.from(table.tHead.rows[0]?.cells || []);
     // Grouped headings and merged cells do not have a one-to-one column mapping.

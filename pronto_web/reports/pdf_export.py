@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from pronto_report.renderers.report_pdf import TEMPLATE_VERSION, render_report_pdf
 from pronto_report.review.attribution import normalize_initials
 from pronto_report.review.contracts import ReviewCommandError
-from pronto_report.validation import validate_report_data, validate_review_state
+from pronto_report.validation import validate_review_state
 
 from .html_export_audit import _error
 from .models import (
@@ -29,6 +29,7 @@ from .models import (
     ReviewRevision,
     WorkingDraft,
 )
+from .source_versions import load_report
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ def record_and_render(record, actor, data, request_id, initials):
         row = ReviewRevision.objects.filter(report=locked, revision=effective_revision).first()
         if row is None:
             raise ReviewCommandError("REVISION_NOT_FOUND", "Revision unavailable", 409)
-        report = validate_report_data(locked.report_data)
+        report = load_report(locked, revision=row.revision)
         review = validate_review_state(row.review_data, report=report)
         if report.report_id != locked.pk or review.revision != row.revision:
             raise ValueError("Stored identity mismatch")

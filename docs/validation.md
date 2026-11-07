@@ -1,5 +1,48 @@
 # Validation record
 
+## Post-QC RNA and MOL appendices — 2026-11-07
+
+| Check | Local result |
+| --- | --- |
+| Full Python/core suite | 583 passed; 18 existing platform/capability skips |
+| Core package coverage | 82%; separate Django/browser runs are not added to this figure |
+| Django request/persistence suite | 133 run, OK, one existing platform skip |
+| Full Chromium suite | 82 passed |
+| Affected browser workflows after final UI polish | 11 passed |
+| Late-source HTTP/history/QC regression suite | 14 passed |
+| PDF/presentation/appendix checks | 10 passed |
+| Discovery metadata-budget regressions | Five passed |
+| Owned code and generated reference | 265 source files documented |
+| Lint, formatting, links and Mermaid | Passed; ten diagrams parsed |
+| Migration consistency and installed requirements | No model changes pending; pip check passed |
+| Complete Python development dependency audit | No known vulnerabilities found |
+| Node dependency audit | Zero vulnerabilities |
+
+The synthetic tests cover standard/reversed QC columns; exact filename/row/RNA
+linkage; duplicate or mixed samples; stable event identity; late source preview
+without writes; changed-byte, stale-version and cross-user rejection; independent
+RNA class persistence; PASS-only inclusion on save/finalize/export; unchanged old
+source documents; source restoration on REOPEN; legacy sample-header aliases;
+missing private archives; and a source commit interleaved with report rendering.
+Export-freeze coverage proves equal review choices cannot deduplicate unequal
+source facts. Input and screenshot fixtures contain generated demonstration data.
+
+An inverted post-QC PASS guard was caught by the new failure regression. The
+source file was restored byte-for-byte and the regression passed again. No
+checks or existing behavior assertions were disabled. Existing PDF test setups
+now persist their declared CNV overview bytes, matching a real imported report.
+
+PDF checks inspect actual images and colors: source page 2 alone, then pages 4
+and 5 together. Synthetic output was also rasterized for visual QA, including
+the partner/exon text, independent clinical class and both CNV appendix pages.
+The received wishlist workbook/PPTX remain outside the public repository.
+
+See [workflow and limits](post-qc-rna.md), [specification](spec-post-qc-rna.md),
+[source-version decision](decisions/0004-version-late-rna-sources.md), and
+[performance proposals](performance.md#faster-late-file-access-and-next-improvements).
+
+## Original repository transition — 2026-11-01
+
 Repository transition from desktop source commit `b1a41f1`, checked locally on
 2026-11-01 with CPython 3.14.0, Windows and the resolved development lock file.
 This record covers software verification, not institutional clinical approval.

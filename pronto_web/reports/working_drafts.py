@@ -17,7 +17,6 @@ from pronto_report.review.source_defaults import upgrade_review
 from pronto_report.serialization import serialize_review_state
 from pronto_report.validation import (
     ContractValidationError,
-    validate_report_data,
     validate_review_state,
 )
 
@@ -30,6 +29,7 @@ from .models import (
     WorkingDraftEvent,
 )
 from .review_repository import DjangoReviewAuthorizer
+from .source_versions import load_report
 
 
 def document(review):
@@ -81,9 +81,15 @@ def freeze_draft(record, revision, version):
     ):
         conflict()
     latest = ReviewRevision.objects.filter(report=record).order_by("-revision").first()
-    if latest and (
-        {key: value for key, value in latest.review_data.items() if key != "revision"}
-        == {key: value for key, value in working.review_data.items() if key != "revision"}
+    from .source_versions import source_key
+
+    if (
+        latest
+        and (
+            {key: value for key, value in latest.review_data.items() if key != "revision"}
+            == {key: value for key, value in working.review_data.items() if key != "revision"}
+        )
+        and source_key(record, latest.revision) == source_key(record, revision)
     ):
         return version, revision, latest.revision
     ReviewRevision.objects.create(report=record, revision=revision, review_data=working.review_data)
@@ -132,7 +138,7 @@ def working_command(request, report_id):
                 or not ReportGrant.objects.filter(report=record, user=request.user).exists()
             ):
                 raise ReviewCommandError("REVIEW_NOT_FOUND", "Report unavailable", 404)
-            report = validate_report_data(record.report_data)
+            report = load_report(record)
             current, version = current_working(record, report)
             working = WorkingDraft.objects.filter(report=record).first()
             if (
@@ -164,9 +170,13 @@ def working_command(request, report_id):
                     raise ReviewCommandError(
                         "REVISION_NOT_FOUND", "Source revision unavailable", 404
                     )
+                report = load_report(record, revision=source)
                 review = upgrade_review(report, validate_review_state(copied, report=report))
                 latest = ReviewRevision.objects.filter(report=record).order_by("-revision").first()
                 next_revision = max(current.revision, latest.revision if latest else 0) + 1
+                from .source_versions import bind_restored_source
+
+                bind_restored_source(record, source, next_revision, request.user)
                 saved = document(review)
                 for key in ("finalizedAt", "finalizedBy", "finalizationAttribution"):
                     saved.pop(key, None)
@@ -184,10 +194,9 @@ def working_command(request, report_id):
                     actor_label=request.user.get_username(),
                 )
                 if action == "SAVE":
-                    if (
-                        not isinstance(data.get("draft"), dict)
-                        or data["draft"].get("schemaVersion") != "4.0"
-                    ):
+                    if not isinstance(data.get("draft"), dict) or data["draft"].get(
+                        "schemaVersion"
+                    ) not in {"4.0", "5.0"}:
                         raise ReviewCommandError("INVALID_DRAFT", "Expected current draft", 422)
                     result = service.save(
                         SaveDraftRequest("1.0", report_id, current.revision, data["draft"]),
@@ -209,6 +218,9 @@ def working_command(request, report_id):
                 else:
                     if working is None:
                         raise ReviewCommandError("UNSAVED_CHANGES", "Save before finalizing.", 409)
+                    from pronto_report.review.rna_qc import validate_rna_review
+
+                    validate_rna_review(report, current)
                     included = {
                         i["findingId"]
                         for i in current.finding_reviews

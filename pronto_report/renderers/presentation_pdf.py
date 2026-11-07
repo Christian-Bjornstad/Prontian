@@ -20,7 +20,7 @@ from .report_pdf import (
     _table,
     _variant_table,
 )
-from .source_fields import effect_label, rna_read_support
+from .source_fields import clinical_class_label, effect_label, rna_read_support
 
 PAGE_SIZE = (960, 540)
 
@@ -47,7 +47,7 @@ def highlighted_rows(model):
             rows.append(
                 {
                     "label": f.get("Gene_Symbol") if kind == "cnv" else f.get("Gene_Label"),
-                    "alteration": "CNV" if kind == "cnv" else f.get("Alteration_Label"),
+                    "alteration": "CNV" if kind == "cnv" else f.get("Report_Label"),
                     "effect": f.get("CN_Change") if kind == "cnv" else f.get("Effect_Label"),
                     "value": f.get("Tumor_CN") if kind == "cnv" else rna_read_support(f),
                     "activity": item["review"],
@@ -183,22 +183,20 @@ def top_tables(model):
         proportions=[0.32, 0.33, 0.35],
     )
     rna = _table(
-        ["Gene", "Alteration", "Read support", "Review"],
+        ["Fusion / splice variant", "Clinical class", "Review"],
         [
             [
-                item["review"].get("presentation", {}).get("displayName")
-                or item["fields"].get("Gene_Label"),
                 item["review"].get("presentation", {}).get("alteration")
-                or item["fields"].get("Alteration_Label"),
-                rna_read_support(item["fields"]),
+                or item["fields"].get("Report_Label"),
+                clinical_class_label(item["review"].get("clinicalClassification")),
                 item["review"].get("comment", "—"),
             ]
             for item in model["rna"]
         ]
-        or [["—"] * 4],
+        or [["—"] * 3],
         245,
         size=7.2,
-        proportions=[0.26, 0.42, 0.18, 0.14],
+        proportions=[0.60, 0.25, 0.15],
     )
     return [
         (

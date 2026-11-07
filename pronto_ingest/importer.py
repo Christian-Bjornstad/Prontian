@@ -673,7 +673,9 @@ def _import_one(plan, report_plan, actor, raw_root, batch, progress, cancel):
                     "Allerede importert; rapporten er bevart.",
                 )
             record = ReportRecord.objects.create(
-                report_id=report.report_id, report_data=json.loads(serialize_report_data(report))
+                report_id=report.report_id,
+                report_data=json.loads(serialize_report_data(report)),
+                rna_sample_ids=sorted(linked - {report_plan.sample_id}),
             )
             ReviewRevision.objects.create(
                 report=record, revision=1, review_data=json.loads(serialize_review_state(review))

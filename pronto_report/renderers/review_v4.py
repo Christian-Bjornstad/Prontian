@@ -5,7 +5,7 @@ from html import escape
 from pronto_report.review.gene_registry import gene_markup
 
 from .review_v3 import checkbox, shown
-from .source_fields import cnv_display_fields
+from .source_fields import cnv_display_fields, rna_display_fields
 
 
 def cnv_row(table, row, activities, readonly, manual=False):
@@ -14,6 +14,8 @@ def cnv_row(table, row, activities, readonly, manual=False):
     fields = row.get("manualFields") or dict(zip(table["headers"], row["values"]))
     if table["kind"] == "CNV":
         fields = cnv_display_fields(fields)
+    else:
+        fields = rna_display_fields(fields)
     decision = activity.get("reportingDecision", "UNREVIEWED")
     disabled = " disabled" if readonly else ""
     options = "".join(
@@ -47,15 +49,33 @@ def cnv_row(table, row, activities, readonly, manual=False):
             + "</div></td>"
         )
     if table["kind"] == "RNA":
+        from pronto_report.review.source_defaults import CLASSES
+
+        classification = activity.get("clinicalClassification", "UNCLASSIFIED")
+        cells += (
+            f'<td><select data-v4-edit data-rna-class aria-label="RNA clinical class {escape(identifier)}"{disabled}>'
+            + "".join(
+                f'<option value="{value}"{" selected" if value == classification else ""}>{"VUS" if value == "VUS" else value.replace("_", " ").title()}</option>'
+                for value in ("UNCLASSIFIED", *CLASSES)
+            )
+            + "</select></td>"
+        )
         cells += f'<td><input data-v4-edit data-rna-comment aria-label="RNA review {escape(identifier)}" maxlength="10000" value="{escape(activity.get("comment", ""), quote=True)}"{disabled}></td>'
         cells += (
             '<td class="source-data">'
-            + ("Passed — yellow source row" if row.get("sourceApproved") else "")
+            + shown(fields["QC_Label"])
+            + (
+                ' <span title="Source Outcome contains QC and QC_Verdict contains the biological consequence">(swapped)</span>'
+                if fields["QC_Columns_Swapped"]
+                else ""
+            )
             + "</td>"
         )
     headers = ordered_headers(table)
     for header in headers:
         value = activity.get("cytoband", "") if header == "Cytoband" else fields.get(header)
+        if header == "Nomenclature":
+            value = fields.get("Report_Label")
         if header == "Cytoband":
             cells += f'<td><input data-v4-edit data-cn-field="cytoband" aria-label="Cytoband {escape(identifier)}" maxlength="100" value="{escape(str(value), quote=True)}"{disabled}></td>'
         elif manual and header == "Gene_Symbol":
@@ -82,16 +102,25 @@ def cnv_row(table, row, activities, readonly, manual=False):
     else:
         cells += "<td></td>"
     search = " ".join(str(v) for v in fields.values() if v is not None).casefold()
-    label = " · ".join(
-        str(fields[k])
-        for k in ("Gene_Symbol", "Gene_A", "Gene_B", "Event_ID", "Tumor_FC")
-        if fields.get(k) is not None
+    label = (
+        fields.get("Report_Label")
+        if table["kind"] == "RNA"
+        else " · ".join(
+            str(fields[k])
+            for k in ("Gene_Symbol", "Gene_A", "Gene_B", "Event_ID", "Tumor_FC")
+            if fields.get(k) is not None
+        )
     )
     classes = ("excluded-row" if decision == "EXCLUDE" else "") + (
         " source-approved" if row.get("sourceApproved") else ""
     )
     return (
         f'<tr data-source-id="{identifier}" data-source-kind="{table["kind"]}" data-source-search="{escape(search, quote=True)}" data-source-label="{escape(label, quote=True)}" class="{classes}"'
+        + (
+            f' data-post-qc="{str(bool(row.get("sourceApproved"))).lower()}"'
+            if table["tableId"].startswith("postqc-")
+            else ""
+        )
         + (" data-manual-cnv" if manual else "")
         + ">"
         + cells
@@ -110,6 +139,7 @@ def ordered_headers(table):
         headers = ["Gene_Symbol", "Chromosome", "Cytoband", "Tumor_CN", "Tumor_FC", *headers]
     elif table["kind"] == "RNA":
         front = [
+            "Nomenclature",
             "Gene_A",
             "Gene_B",
             "Provisional_Event_Type",
@@ -117,8 +147,12 @@ def ordered_headers(table):
             "Exon_A",
             "Exon_B",
             "Event_Support_Dedup_Percentage",
+            "Outcome",
+            "QC_Verdict",
         ]
-        headers = [h for h in front if h in headers] + [h for h in headers if h not in front]
+        headers = [h for h in front if h in headers or h == "Nomenclature"] + [
+            h for h in headers if h not in front
+        ]
     return headers
 
 
@@ -156,7 +190,11 @@ def source_tables(report, review, kind, readonly):
         identifier = table["tableId"]
         headings = (
             ["Report review", "Report highlight"]
-            + (["CN Gain / Loss"] if kind == "CNV" else ["Review note", "Manual QC"])
+            + (
+                ["CN Gain / Loss"]
+                if kind == "CNV"
+                else ["Clinical class", "Review note", "Technical QC"]
+            )
             + ordered_headers(table)
             + (["Source QC highlight", ""] if kind == "CNV" else [""])
         )
@@ -171,7 +209,13 @@ def source_tables(report, review, kind, readonly):
                 + "</template>"
             )
         parts.append(
-            f'<section class="source-table-block" data-table-workspace="{identifier}"><div class="table-toolbar">{toolbar}<label>Search all source columns <input type="search" data-source-search-for="{identifier}"></label></div>'
+            f'<section class="source-table-block" data-table-workspace="{identifier}">'
+            + (
+                f'<p class="source-file-label">{shown(table["fileName"])} · {len(table["rows"])} source candidates</p>'
+                if table.get("fileName")
+                else ""
+            )
+            + f'<div class="table-toolbar">{toolbar}<label>Search all source columns <input type="search" data-source-search-for="{identifier}"></label></div>'
             f'<div class="table-scroll" role="region" aria-label="Full {kind} source table" tabindex="0"><table class="full-source-table" id="{identifier}"><thead><tr>'
             + "".join("<th>" + shown(h) + "</th>" for h in headings)
             + "</tr></thead><tbody>"

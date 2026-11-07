@@ -52,3 +52,35 @@ rollout run the same sample-count measurement on the intended filesystem with
 approved test material. Record cold/warm runs separately and verify that report
 counts and chosen sources match. Choosing the nearest run root or exact date
 also avoids scanning unrelated historical runs.
+
+## Faster late-file access and next improvements
+
+The [post-QC upload flow](post-qc-rna.md) reads only the chosen workbooks. It does
+not rediscover a run, reopen all its variant tables or traverse historical roots.
+New imports persist their already validated RNA IDs, avoiding a second linkage
+lookup for a later upload. No SMB timing claim is inferred from this design.
+
+Recommended next steps, in priority order:
+
+1. **Operational convention:** use one known transfer root and exact run ID/date.
+   Put post-QC outputs in predictable `fusions`/`splice` directories and keep the
+   exact RNA ID in each filename. This improves lookup without code changes.
+2. **Remember the last post-QC folder per workstation:** a native file picker can
+   restore a saved approved location. Browser file inputs cannot be assigned an
+   arbitrary network starting directory by the application; do not promise that
+   a web-only picker can control the operating system's folder history.
+3. **Producer-generated run manifest:** a small versioned JSON/TSV list containing
+   exact sample, role, relative path, size and checksum would avoid recursively
+   searching a run. Validate containment, identity and current bytes again at
+   import; a manifest must not authorize a path by itself.
+4. **Measure the actual bottleneck on the intended share:** record directory
+   enumeration, table reads, XLSX parsing, plot rendering and database time
+   separately, with cold/warm measurements. Optimize the slow stage before adding
+   network parallelism or a persistent patient-data cache.
+5. **Optional explicit refresh of known post-QC paths:** remember exact confirmed
+   paths with permission-appropriate storage, then check only those files when
+   the reviewer requests refresh. Always show changed SHA-256/QC and preview;
+   never silently replace a clinical source because a filesystem watcher fires.
+
+These are proposals. The current change implements direct workbook selection and
+persisted validated linkage, and retains the existing bounded run-discovery cache.

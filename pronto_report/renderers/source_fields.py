@@ -33,7 +33,10 @@ def rna_display_fields(fields):
     """Name only what the source declares; never infer an exon-skipping event."""
     result = dict(fields)
     first, second = _provided(fields.get("Gene_A")), _provided(fields.get("Gene_B"))
-    fusion = str(fields.get("Provisional_Event_Type", "")).casefold() == "fusion"
+    from pronto_report.adapters.post_qc_rna import event_kind, preview_row
+
+    kind = event_kind(fields)
+    fusion = kind == "Fusion"
     result["Gene_Label"] = f"{first}::{second}" if fusion and second and first != second else first
     partners = [
         (gene, _exon_label(fields.get(exon)))
@@ -49,15 +52,30 @@ def rna_display_fields(fields):
         result["Alteration_Label"] = _provided(fields.get("Event_ID")) or effect_label(
             fields.get("Provisional_Event_Type")
         )
-    result["Effect_Label"] = effect_label(fields.get("Provisional_Event_Type"))
+    result["Effect_Label"] = effect_label(kind or fields.get("Provisional_Event_Type"))
+
+    preview = preview_row(fields)
+    result["Nomenclature_Label"] = preview["label"]
+    result["Report_Label"] = preview["reportLabel"]
+    result["Outcome_Label"] = preview["outcome"]
+    result["QC_Label"] = preview["qc"]
+    result["QC_Columns_Swapped"] = preview["columnsSwapped"]
     return result
 
 
 def rna_read_support(fields):
     percentage = fields.get("Event_Support_Dedup_Percentage")
     if _provided(percentage):
-        return str(percentage) if str(percentage).endswith("%") else f"{percentage}%"
+        from pronto_report.adapters.post_qc_rna import support_label
+
+        return support_label(fields)
     return fields.get("Read_Support")
+
+
+def clinical_class_label(value):
+    """Keep the clinical acronym VUS while wrapping other labels at word boundaries."""
+    text = str(value or "UNCLASSIFIED")
+    return "VUS" if text == "VUS" else text.replace("_", " ").title()
 
 
 def presentation_sources(report):
@@ -97,7 +115,7 @@ def presentation_sources(report):
                 fields = rna_display_fields(fields)
                 values = {
                     "label": fields["Gene_Label"],
-                    "alteration": fields["Alteration_Label"],
+                    "alteration": fields["Report_Label"],
                     "effect": fields["Effect_Label"],
                     "value": rna_read_support(fields),
                 }

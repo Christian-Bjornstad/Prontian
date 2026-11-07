@@ -96,7 +96,7 @@ def source_defaults(report):
 
 
 def upgrade_review(report, review, *, seed_defaults=True):
-    if review.schema_version == "4.0":
+    if review.schema_version in {"4.0", "5.0"}:
         return review
     old_classes = {
         item["variantId"]: item["clinicalClassification"] for item in review.variant_reviews

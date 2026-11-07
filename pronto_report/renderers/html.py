@@ -244,7 +244,7 @@ def _biomarker_cards(
             metric = next((item for item in report.biomarkers if item["metricId"] == metric_id), {})
             if metric:
                 display_range = f'<p class="metric-card__range">Range {escape(str(metric.get("displayRange", "[0-100+]" if metric_id == "tmb" else "[0-100]")))}</p>'
-            if metric and review and review.schema_version in {"3.0", "4.0"}:
+            if metric and review and review.schema_version in {"3.0", "4.0", "5.0"}:
                 activity = next(
                     (item for item in review.biomarker_reviews if item["metricId"] == metric_id), {}
                 )
@@ -438,7 +438,7 @@ def _review_select(
                 ("ONCOGENIC", "Oncogenic"),
             ),
         )
-    if modern == "4.0":
+    if modern in {"4.0", "5.0"}:
         if field == "clinicalClassification":
             from pronto_report.review.source_defaults import CLASSES
 
@@ -473,7 +473,7 @@ def _variant_rows(
     web_igv: bool = False,
 ) -> str:
     if not report.variants:
-        modern = review is not None and review.schema_version in {"3.0", "4.0"}
+        modern = review is not None and review.schema_version in {"3.0", "4.0", "5.0"}
         span = 7 + int(web_igv) + (4 if modern else 2 if review else 0)
         span += 3 + len(variant_columns.columns(report)) if modern else 1
         return f'<tr><td colspan="{span}">No variants in source data.</td></tr>'
@@ -481,7 +481,7 @@ def _variant_rows(
     reviews = {item["variantId"]: item for item in review.variant_reviews} if review else {}
     read_columns = variant_columns.value_reader(report)
     source_occurrences = {}
-    if not review or review.schema_version not in {"3.0", "4.0"}:
+    if not review or review.schema_version not in {"3.0", "4.0", "5.0"}:
         for table in report.source_tables:
             if table["kind"] == "VARIANTS":
                 for row in table["rows"]:
@@ -557,7 +557,7 @@ def _variant_rows(
                         ("clinicalClassification", classification),
                     )
                 )
-                if review.schema_version in {"3.0", "4.0"}:
+                if review.schema_version in {"3.0", "4.0", "5.0"}:
                     review_cells += (
                         "<td>"
                         + ("Excluded" if decision == "EXCLUDE" else "—")
@@ -616,7 +616,7 @@ def _variant_rows(
                     + class_buttons
                     + "</div></td>"
                 )
-                if review.schema_version in {"3.0", "4.0"}:
+                if review.schema_version in {"3.0", "4.0", "5.0"}:
                     class_buttons = _review_select(
                         variant_id,
                         occurrence_id,
@@ -640,7 +640,7 @@ def _variant_rows(
                         + class_buttons
                         + "</td>"
                     )
-                    if review.schema_version != "4.0":
+                    if review.schema_version not in {"4.0", "5.0"}:
                         review_cells += (
                             "<td>"
                             + review_v3.checkbox(
@@ -680,7 +680,7 @@ def _variant_rows(
                         "clinicalClassification",
                         classification,
                         review.status == "FINAL",
-                        review.schema_version in {"3.0", "4.0"},
+                        review.schema_version in {"3.0", "4.0", "5.0"},
                     )
                     + "</dd>"
                     + "<dt>IGV QC</dt><dd>"
@@ -698,7 +698,7 @@ def _variant_rows(
                 )
         if (
             review
-            and review.schema_version in {"3.0", "4.0"}
+            and review.schema_version in {"3.0", "4.0", "5.0"}
             and activity.get("legacyClinicalClassification")
         ):
             review_details += (
@@ -740,7 +740,7 @@ def _variant_rows(
             + review_details
             + "</dl></details></td>"
         )
-        if review and review.schema_version in {"3.0", "4.0"}:
+        if review and review.schema_version in {"3.0", "4.0", "5.0"}:
             if snapshot:
                 qc_cell = escape(labels["igvAssessment"].get(igv, igv.replace("_", " ").title()))
                 comment_cell = escape(comment) or "—"
@@ -763,7 +763,7 @@ def _variant_rows(
                     escape(comment),
                 )
             details = (
-                (igv_cell if review.schema_version == "4.0" else "")
+                (igv_cell if review.schema_version in {"4.0", "5.0"} else "")
                 + "<td>"
                 + qc_cell
                 + "</td><td>"
@@ -794,11 +794,11 @@ def _variant_rows(
                         + ("In list" if gene_in_list(variant.get("gene")) else "Not in list")
                         + "</span>"
                     )
-                    if review and review.schema_version == "4.0"
+                    if review and review.schema_version in {"4.0", "5.0"}
                     else "Not cross-checked"
                 )
                 + "</td>"
-                + ("" if review and review.schema_version == "4.0" else igv_cell),
+                + ("" if review and review.schema_version in {"4.0", "5.0"} else igv_cell),
                 review_cells,
                 details,
             )
@@ -993,7 +993,7 @@ def _tumour_content(
         ("biomarkerContext", "Biomarkers and therapeutic context", "note-biomarker-context"),
         ("additional", "Additional comments", "note-additional"),
     )
-    if review.schema_version in {"3.0", "4.0"}:
+    if review.schema_version in {"3.0", "4.0", "5.0"}:
         note_fields += tuple((key, label, "note-" + key) for key, label in review_v3.NOTE_FIELDS)
         note_fields = tuple(
             (
@@ -1060,6 +1060,8 @@ def _inline_assets(
         + "\n"
         + (_STATIC_ROOT / "review-v4.js").read_text(encoding="utf-8")
         + "\n"
+        + (_STATIC_ROOT / "post-qc-rna.js").read_text(encoding="utf-8")
+        + "\n"
         + (_STATIC_ROOT / "review-v3.js").read_text(encoding="utf-8")
         + "\n"
         + (_STATIC_ROOT / "report-attribution.js").read_text(encoding="utf-8")
@@ -1125,6 +1127,7 @@ def render_html(
     html_export_url: str | None = None,
     pdf_export_url: str | None = None,
     figure_upload_url: str | None = None,
+    post_qc_upload_url: str | None = None,
     figure_assets: Mapping[str, bytes] | None = None,
     needs_upgrade: bool = False,
     actor_id: str | None = None,
@@ -1182,7 +1185,7 @@ def render_html(
         else (
             "",
             '<link rel="stylesheet" href="/static/report.css">',
-            '<script src="/static/table-views.js" defer></script><script src="/static/presentation-fields.js" defer></script><script src="/static/review-v4.js" defer></script><script src="/static/review-v3.js" defer></script><script src="/static/report-attribution.js" defer></script><script src="/static/report.js" defer></script>',
+            '<script src="/static/table-views.js" defer></script><script src="/static/presentation-fields.js" defer></script><script src="/static/review-v4.js" defer></script><script src="/static/post-qc-rna.js" defer></script><script src="/static/review-v3.js" defer></script><script src="/static/report-attribution.js" defer></script><script src="/static/report.js" defer></script>',
         )
     )
     if web_igv:
@@ -1428,7 +1431,7 @@ def render_html(
         "key_variant_rows": _key_variant_rows(report, review),
         "variant_rows": _variant_rows(report, review, snapshot, web_igv),
         "variant_extra_headers": variant_columns.headers(report)
-        if review and review.schema_version in {"3.0", "4.0"}
+        if review and review.schema_version in {"3.0", "4.0", "5.0"}
         else '<th scope="col">Details</th>',
         "igv_column": '<th scope="col">IGV</th>' if web_igv else "",
         "igv_panel": (
@@ -1500,8 +1503,24 @@ def render_html(
         "new_review_summary",
     ):
         html_context.setdefault(key, "")
-    if review and review.schema_version in {"3.0", "4.0"}:
+    if review and review.schema_version in {"3.0", "4.0", "5.0"}:
         review_v3.enhance_context(html_context, report, review, plot_images, not editable)
+        if post_qc_upload_url:
+            if not safe_path(post_qc_upload_url) or snapshot or not csrf_token or not editable:
+                raise ValueError("Post-QC upload requires a live authorized draft and CSRF token")
+            html_context["rna_content"] = (
+                '<section class="post-qc-upload" id="post-qc-upload"'
+                f' data-url="{escape(post_qc_upload_url, quote=True)}" data-csrf="{escape(csrf_token, quote=True)}">'
+                "<h3>Load post-QC fusion / splice files</h3>"
+                "<p>Select the specific Excel files when bioinformatics QC is ready. "
+                "Save current changes first. The preview checks the linked RNA sample and shows how QC columns are interpreted.</p>"
+                '<label>Post-QC workbooks <input type="file" id="post-qc-files" accept=".xlsx" multiple></label>'
+                '<button type="button" data-preview-post-qc>Preview post-QC files</button>'
+                "<div data-post-qc-preview></div>"
+                '<p role="status" aria-live="polite"></p>'
+                '<button type="button" data-apply-post-qc hidden>Import confirmed post-QC files</button>'
+                "</section>" + html_context["rna_content"]
+            )
         from .source_fields import presentation_sources
 
         source_data = json.dumps(presentation_sources(report), ensure_ascii=False).replace(
@@ -1522,7 +1541,7 @@ def render_html(
         html_context["review_columns"] = (
             '<th scope="col">Report</th><th scope="col">Review</th><th scope="col">Exclude</th><th scope="col">Report highlight</th>'
         )
-        if review.schema_version == "4.0":
+        if review.schema_version in {"4.0", "5.0"}:
             from pronto_report.review.source_defaults import exclusion_ids, source_defaults
 
             defaults = json.dumps(source_defaults(report)).replace("<", r"\u003c")

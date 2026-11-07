@@ -50,8 +50,9 @@ document.addEventListener("change", (event) => {
 /* Linked controls for one versioned working copy; persistence remains explicit. */
 window.initReviewV3 = function (api) {
   const { state, activityFor, changed, busy, setExporting, isDirty } = api;
-  if (state.schemaVersion === "4.0") window.initReviewV4?.(api);
-  if (!["3.0", "4.0"].includes(state.schemaVersion)) return;
+  if (["4.0", "5.0"].includes(state.schemaVersion)) window.initReviewV4?.(api);
+  if (!["3.0", "4.0", "5.0"].includes(state.schemaVersion)) return;
+  window.initPostQcRna?.(api);
   window.initPresentationFields?.(api);
   function findingFor(id) {
     let item = state.findingReviews.find((value) => value.findingId === id);
@@ -114,6 +115,9 @@ window.initReviewV3 = function (api) {
         item.reportingDecision || "UNREVIEWED";
       row.querySelector("[data-source-highlight]").checked =
         !!item.reportHighlight;
+      const classification = row.querySelector("[data-rna-class]");
+      if (classification)
+        classification.value = item.clinicalClassification || "UNCLASSIFIED";
       row.classList.toggle(
         "excluded-row",
         item.reportingDecision === "EXCLUDE",
@@ -175,7 +179,7 @@ window.initReviewV3 = function (api) {
         if (item?.reportingDecision !== "INCLUDE") return;
         seen.add(row.dataset.sourceId);
         const node = document.createElement("li");
-        node.textContent = `${row.dataset.sourceKind} · ${row.dataset.sourceLabel}`;
+        node.textContent = `${row.dataset.sourceKind} · ${row.dataset.sourceLabel}${item.clinicalClassification ? ` · ${item.clinicalClassification}` : ""}`;
         sourceList.append(node);
         if (item.reportHighlight) list.append(node.cloneNode(true));
       });

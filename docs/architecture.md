@@ -58,6 +58,12 @@ private assets or running review/export commands.
 
 ## Source, interpretation and presentation
 
+Late post-QC input uses the [explicit preview/confirm workflow](post-qc-rna.md).
+The browser uploads selected workbooks directly instead of rescanning network
+folders. `ReportSourceRevision` preserves each new source snapshot separately
+from the original import. Source resolution is bound to the selected review
+revision, including when historical content is reopened or exported again.
+
 ```mermaid
 flowchart LR
     SRC[Original tables and plots] --> ADAPT[Adapters and validation]
@@ -141,3 +147,4 @@ HTTPS, database strategy and operational testing; see [readiness](production-rea
 - [ADR 0001: independent repository](decisions/0001-independent-repository.md)
 - [ADR 0002: stable contracts and storage](decisions/0002-preserve-contracts-and-storage.md)
 - [ADR 0003: discovery cache lifetime](decisions/0003-discovery-caches.md)
+- [ADR 0004: late source facts bound to review history](decisions/0004-version-late-rna-sources.md)
