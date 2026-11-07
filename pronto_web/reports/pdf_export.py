@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from dataclasses import replace
 from hashlib import sha256
 from uuid import UUID
 
@@ -87,7 +88,19 @@ def record_and_render(record, actor, data, request_id, initials):
         if report.report_id != locked.pk or review.revision != row.revision:
             raise ValueError("Stored identity mismatch")
         assets = {}
+        plot_images = {}
         if data["layout"] == "PRESENTATION":
+            from pronto_report.renderers.assets import load_plot_images_from_bytes
+            from pronto_report.renderers.cnv_appendix import overview_assets
+
+            overview = replace(report, attachments=overview_assets(report))
+            blobs = {
+                asset.asset_id: bytes(asset.content)
+                for asset in locked.assets.filter(
+                    asset_id__in=[item["assetId"] for item in overview.attachments]
+                )
+            }
+            plot_images = load_plot_images_from_bytes(overview, blobs)
             ids = [item["figureId"] for item in review.presentation_figures]
             for figure in PresentationFigure.objects.filter(report=locked, pk__in=ids):
                 payload = bytes(figure.content)
@@ -95,7 +108,12 @@ def record_and_render(record, actor, data, request_id, initials):
                     raise ValueError("Figure hash mismatch")
                 assets[str(figure.pk)] = payload
         pdf = render_report_pdf(
-            report, review, layout=data["layout"], export_initials=actor_label, figure_assets=assets
+            report,
+            review,
+            layout=data["layout"],
+            export_initials=actor_label,
+            figure_assets=assets,
+            plot_images=plot_images,
         )
         if not existing:
             ReportPdfExportAudit.objects.create(

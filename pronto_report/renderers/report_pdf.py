@@ -22,7 +22,7 @@ from pronto_report.serialization import serialize_report_data, serialize_review_
 
 from .source_fields import cnv_display_fields, effect_label, rna_display_fields
 
-TEMPLATE_VERSION = "2.1"
+TEMPLATE_VERSION = "2.2"
 BLUE = "#203b63"
 GREEN = "#14592c"
 OLIVE = "#708322"
@@ -505,8 +505,15 @@ def _draw_column(canvas, flowables, x, top, width, height):
 
 
 def render_report_pdf(
-    report, review, *, layout, export_initials, figure_assets: Mapping[str, bytes] | None = None
+    report,
+    review,
+    *,
+    layout,
+    export_initials,
+    figure_assets: Mapping[str, bytes] | None = None,
+    plot_images=None,
 ):
+    """Render a saved source/review pair with verified private assets supplied by the caller."""
     if layout not in {"PRESENTATION", "ESMO"} or not export_initials:
         raise ValueError("Invalid PDF layout or attribution")
     model = project_report_export(report, review)
@@ -587,6 +594,9 @@ def render_report_pdf(
         from .presentation_pdf import presentation_story
 
         story, first = presentation_story(model, doc, export_initials)
+        from .cnv_appendix import appendix_story
+
+        story.extend(appendix_story(report, plot_images or {}, width, doc.height))
         if model["figures"]:
             assets = figure_assets or {}
             for number, figure in enumerate(model["figures"], 1):
