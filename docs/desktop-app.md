@@ -4,6 +4,9 @@ Prontian samler filimport, database og lokal rapportserver i ett programvindu.
 Rapportene åpnes i nettleseren etter innlogging. Kildedata og vurderinger lagres
 separat; en faglig vurdering overskriver ikke den importerte kildeverdien.
 
+For filer som kommer etter bioinformatikernes QC: se [post-QC-fusjoner, splice
+og CNV-vedlegg](post-qc-rna.md). De velges direkte fra RNA-fanen i et utkast.
+
 ## Installere og starte
 
 Bruk 64-bit Python 3.14. Åpne PowerShell i prosjektmappen:

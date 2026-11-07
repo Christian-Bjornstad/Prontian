@@ -20,6 +20,18 @@ class ExtendedReportTests(TestCase):
         DraftSaveTests.setUp(self)
         self.draft = json.loads(serialize_review_state(migrate_review_state_to_v3(self.review)))
         ReviewRevision.objects.filter(report=self.record).update(review_data=self.draft)
+        from pronto.tests.reporting.test_pronto_output_adapter import FIXTURE_ROOT
+        from pronto_web.reports.models import ReportAsset
+
+        # Exports now include the imported overview; persist its original bytes
+        # as the real importer does instead of constructing a source-only record.
+        for asset in self.report.attachments:
+            if str(asset["name"]).endswith("_CNV_overview_plots.pdf"):
+                ReportAsset.objects.create(
+                    report=self.record,
+                    asset_id=asset["assetId"],
+                    content=(FIXTURE_ROOT / asset["name"]).read_bytes(),
+                )
         self.client.force_login(self.writer)
 
     def image(self):

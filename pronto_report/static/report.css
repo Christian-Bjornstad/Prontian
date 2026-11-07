@@ -2054,3 +2054,52 @@ button {
   min-width: 16rem;
   max-width: 24rem;
 }
+.post-qc-upload {
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-050);
+}
+.post-qc-upload input[type="file"] {
+  max-width: 100%;
+  margin: var(--space-2);
+}
+.post-qc-upload button {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-brand-900);
+}
+.post-qc-upload button:hover {
+  background: var(--color-brand-100);
+}
+.post-qc-upload [data-apply-post-qc] {
+  background: var(--color-brand-900);
+  color: var(--color-surface);
+}
+.post-qc-upload button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+#panel-rna-review .full-source-table th:nth-child(6),
+#panel-rna-review .full-source-table td:nth-child(6) {
+  min-width: 24rem;
+  white-space: normal;
+}
+.source-file-label {
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+}
+.post-qc-upload .table-scroll {
+  max-height: 26rem;
+}
+.post-qc-upload [role="status"] {
+  white-space: pre-wrap;
+}
+@media print {
+  .post-qc-upload {
+    display: none;
+  }
+}

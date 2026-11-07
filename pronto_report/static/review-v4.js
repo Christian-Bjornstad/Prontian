@@ -37,7 +37,10 @@ window.initReviewV4 = function ({ state, changed, busy }) {
             "aria-pressed",
             String(item?.cnChange === control.dataset.cnChange),
           );
-        control.disabled = !editing();
+        control.disabled =
+          !editing() ||
+          (control.dataset.sourceAction === "INCLUDE" &&
+            row?.dataset.postQc === "false");
       });
     document
       .querySelectorAll("[data-section-qc-comment]")
@@ -97,6 +100,14 @@ window.initReviewV4 = function ({ state, changed, busy }) {
     } else return;
     changed();
     refresh();
+  });
+  document.addEventListener("change", (event) => {
+    const control = event.target;
+    if (!editing() || !control.hasAttribute("data-rna-class")) return;
+    finding(control.closest("tr").dataset.sourceId).clinicalClassification =
+      control.value;
+    state.schemaVersion = "5.0";
+    changed();
   });
   document.addEventListener("click", (event) => {
     const control = event.target.closest(

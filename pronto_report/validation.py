@@ -148,7 +148,9 @@ def validate_review_state(document: Any, *, report: ReportData | None = None) ->
     """Validate untrusted ReviewState input and optionally bind it to a report."""
     version = document.get("schemaVersion") if isinstance(document, Mapping) else None
     schema_name = (
-        "review-state-v4.schema.json"
+        "review-state-v5.schema.json"
+        if version == "5.0"
+        else "review-state-v4.schema.json"
         if version == "4.0"
         else "review-state-v3.schema.json"
         if version == "3.0"

@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — post-QC RNA and MOL CNV appendices
+
+- Select late fusion/splice XLSX files directly from RNA review, preview exact
+  sample linkage, technical QC and standard/reversed QC column interpretation,
+  then confirm the same files against the current draft.
+- Preserve raw workbooks and versioned source snapshots without changing
+  earlier saved/final reports. Reopening an old review retains its source version.
+- Add ReviewState 5.0 for independent RNA clinical classes such as ONCOGENIC
+  and VUS. Replaced source categories require fresh review; FAIL/unreviewed
+  post-QC events cannot be included, finalized or exported as included findings.
+- Format source-declared partner/exon nomenclature and rounded report support,
+  while preserving exact original percentages and all source annotations.
+- Append A2 on one page, then B3/C1 together, to landscape MOL PDFs. Missing or
+  unfamiliar CNV overview layouts are disclosed instead of mislabeled.
+- Add migration 0015. Desktop startup backs up an existing database before
+  applying it; retain the original installation key and all private source data.
+
 ## Unreleased — independent Prontian repository
 
 - Establish Prontian from the current desktop application with a clean public

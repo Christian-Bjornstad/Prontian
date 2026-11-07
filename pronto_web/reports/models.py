@@ -25,6 +25,33 @@ class ReportRecord(models.Model):
     report_id = models.CharField(max_length=128, primary_key=True)
     report_data = models.JSONField()
     team_shared = models.BooleanField(default=False)
+    rna_sample_ids = models.JSONField(default=list)
+
+
+class ReportSourceRevision(models.Model):
+    """Append-only source snapshot effective from one review revision onward.
+
+    The original ReportRecord and older versions are never overwritten. Raw
+    selected workbooks are kept in a private ZIP blob with their byte hashes;
+    restoration bindings may reuse older facts without duplicating the archive.
+    """
+
+    report = models.ForeignKey(
+        ReportRecord, on_delete=models.PROTECT, related_name="source_revisions"
+    )
+    effective_revision = models.PositiveIntegerField()
+    report_data = models.JSONField()
+    source_files = models.JSONField(default=list)
+    source_archive = models.BinaryField(default=bytes)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["report", "effective_revision"], name="unique_report_source_revision"
+            )
+        ]
 
 
 class AdministrationEvent(models.Model):

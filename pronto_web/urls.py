@@ -13,6 +13,7 @@ from pronto_web.reports.figures import figure_content, upload_figure
 from pronto_web.reports.html_export_audit import html_export_request
 from pronto_web.reports.igv_references import reference_component
 from pronto_web.reports.pdf_export import pdf_export_request
+from pronto_web.reports.post_qc_upload import post_qc_rna
 from pronto_web.reports.print_audit import print_request
 from pronto_web.reports.revision_management import manage_revisions
 from pronto_web.reports.user_management import manage_users
@@ -33,6 +34,7 @@ from pronto_web.reports.views import (
 from pronto_web.reports.working_drafts import working_command
 
 urlpatterns = [
+    path("reports/<str:report_id>/post-qc-rna/", post_qc_rna, name="post-qc-rna"),
     path("accounts/users/", manage_users, name="manage-users"),
     path("reports/<str:report_id>/history/", manage_revisions, name="manage-revisions"),
     path("favicon.ico", favicon, name="pronto-favicon"),

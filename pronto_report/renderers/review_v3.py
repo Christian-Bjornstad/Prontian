@@ -60,7 +60,9 @@ def qc_control(review, section, *, readonly=False, suffix="section"):
             + shown(assessment.get("comment", ""))
             + "</textarea></label>"
         )
-        if review.schema_version == "4.0" and section in {"cnv", "rna"} and suffix != "report"
+        if review.schema_version in {"4.0", "5.0"}
+        and section in {"cnv", "rna"}
+        and suffix != "report"
         else ""
     )
     return (
@@ -148,7 +150,7 @@ def source_table(table, review, *, readonly=False):
 
 
 def source_tables(report, review, kind, readonly=False):
-    if review.schema_version == "4.0":
+    if review.schema_version in {"4.0", "5.0"}:
         from .review_v4 import source_tables as v4_tables
 
         return v4_tables(report, review, kind, readonly)

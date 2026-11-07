@@ -13,7 +13,7 @@ def test_modern_workspace_has_linked_review_sections_and_full_source_table():
     assert "data-highlight-variant=" in html
     assert "All source columns" not in html
     assert '<th scope="col">Genomic location</th>' in html
-    assert "QC_Verdict" not in html  # not invented when no RNA source exists
+    assert "<th>QC_Verdict</th>" not in html  # no invented source column when RNA is absent
     assert "Clinical trial context" in html
     assert 'data-metric="hrd" data-availability="UNAVAILABLE"' in html
 

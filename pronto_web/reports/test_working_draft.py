@@ -15,6 +15,16 @@ class WorkingDraftTests(TestCase):
 
         DraftSaveTests.setUp(self)
         self.client.force_login(self.writer)
+        from pronto.tests.reporting.test_pronto_output_adapter import FIXTURE_ROOT
+        from pronto_web.reports.models import ReportAsset
+
+        for asset in self.report.attachments:
+            if str(asset["name"]).endswith("_CNV_overview_plots.pdf"):
+                ReportAsset.objects.create(
+                    report=self.record,
+                    asset_id=asset["assetId"],
+                    content=(FIXTURE_ROOT / asset["name"]).read_bytes(),
+                )
         self.draft = json.loads(serialize_review_state(upgrade_review(self.report, self.review)))
         self.draft["revision"] = 2
         self.working_url = f"/reports/{self.report.report_id}/working/"

@@ -1281,7 +1281,7 @@
         reportingDecision: "UNREVIEWED",
         clinicalClassification: "UNCLASSIFIED",
         igvAssessment: "NOT_REVIEWED",
-        ...(["3.0", "4.0"].includes(reviewState.schemaVersion)
+        ...(["3.0", "4.0", "5.0"].includes(reviewState.schemaVersion)
           ? { reportHighlight: false }
           : {}),
       };

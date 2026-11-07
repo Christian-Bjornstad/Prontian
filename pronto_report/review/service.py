@@ -85,7 +85,7 @@ class ReviewCommandService:
                 "INVALID_DRAFT", "Draft did not pass validation", 422, issues=error.issues
             ) from error
         if (
-            draft.schema_version not in {"2.0", "3.0", "4.0"}
+            draft.schema_version not in {"2.0", "3.0", "4.0", "5.0"}
             or draft.status != "DRAFT"
             or draft.revision != base_revision
         ):
@@ -136,6 +136,13 @@ class ReviewCommandService:
         current = self._current(request, actor_id, report)
         attribution = self._attribution(request, actor_id)
         draft = self._draft(request.draft, report, request.base_revision)
+        if current.schema_version == "5.0" and draft.schema_version != "5.0":
+            raise ReviewCommandError(
+                "INVALID_DRAFT", "Cannot discard RNA clinical classifications", 422
+            )
+        from .rna_qc import validate_rna_review
+
+        validate_rna_review(report, draft)
         if draft.created_at != current.created_at:
             raise ReviewCommandError("INVALID_DRAFT", "Draft creation time changed", 422)
         known_variants = {item["variantId"] for item in report.variants}
@@ -145,9 +152,13 @@ class ReviewCommandService:
             or set(reviewed_variants) - known_variants
         ):
             raise ReviewCommandError("INVALID_DRAFT", "Unknown or duplicate reviewed variant", 422)
-        if current.schema_version in {"3.0", "4.0"} and draft.schema_version not in {"3.0", "4.0"}:
+        if current.schema_version in {"3.0", "4.0", "5.0"} and draft.schema_version not in {
+            "3.0",
+            "4.0",
+            "5.0",
+        }:
             raise ReviewCommandError("INVALID_DRAFT", "Cannot discard v3 review fields", 422)
-        if draft.schema_version in {"3.0", "4.0"}:
+        if draft.schema_version in {"3.0", "4.0", "5.0"}:
             previous_legacy = {
                 item["variantId"]: item["legacyClinicalClassification"]
                 for item in migrate_review_state_to_v3(current).variant_reviews
@@ -246,6 +257,9 @@ class ReviewCommandService:
         self, request: FinalizeRequest, *, actor_id: str, report: ReportData
     ) -> ReviewCommandResponse:
         current = self._current(request, actor_id, report)
+        from .rna_qc import validate_rna_review
+
+        validate_rna_review(report, current)
         attribution = self._attribution(request, actor_id)
         draft = self._draft(request.draft, report, request.base_revision)
         if serialize_review_state(draft) != serialize_review_state(current):
@@ -281,7 +295,7 @@ class ReviewCommandService:
         attribution = self._attribution(request, actor_id, force=True)
         timestamp = self._timestamp()
         document = json.loads(serialize_review_state(current))
-        if current.schema_version in {"3.0", "4.0"}:
+        if current.schema_version in {"3.0", "4.0", "5.0"}:
             document["findingReviews"] = []
             document["biomarkerReviews"] = []
             document["presentationFigures"] = []

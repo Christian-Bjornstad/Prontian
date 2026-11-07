@@ -22,6 +22,7 @@ ASSET_PURPOSES = {
     "working-draft.js": "Integrate the versioned working-draft command protocol with the report UI.",
     "review-v3.js": "Link finding and biomarker controls, section QC and plot navigation for v3 reviews.",
     "review-v4.js": "Unified finding controls, current review fields and manual CNV rows.",
+    "post-qc-rna.js": "Select late RNA workbooks, preview exact QC interpretation and confirm the current draft version.",
     "table-views.js": "Compact/full tables, source detail indexing and expanded table interaction.",
     "report-igv.js": "Local IGV lifecycle, reference selection, local reads and optional alignment preservation.",
     "report-attribution.js": "Attach current reviewer attribution to print and export actions.",

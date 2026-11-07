@@ -15,6 +15,11 @@ This guide explains how to choose the right layer before editing.
 | Recognize an input format or choose a version | `pronto_ingest/discovery.py` | `naming.py`, `linkage.py`, versioned discovery tests |
 | Archive, fingerprint or publish an import | `pronto_ingest/importer.py` | ingest transaction, changed-source and duplicate tests |
 | Read TSV/CSV/XLSX/Cancan content | `pronto_report/adapters/` | identity and adapter/import tests |
+| Parse post-QC QC columns, exact RNA IDs and report nomenclature | `adapters/post_qc_rna.py` | parser/identity and reversed-column tests |
+| Preview and confirm late RNA sources | `pronto_web/reports/post_qc_upload.py` | `post_qc_sources.py`, HTTP authorization/concurrency tests |
+| Resolve source facts for current/historical review | `pronto_web/reports/source_versions.py` | `ReportSourceRevision`, migration 0015, reopen/export tests |
+| Guard post-QC INCLUDE against technical QC | `review/rna_qc.py` | shared save/finalize/export validation |
+| Add the standard MOL CNV appendix | `renderers/cnv_appendix.py` | `reports/pdf_export.py`, pixel/order PDF tests |
 | Change report or review fields | schemas, `models.py`, `validation.py` | serialization, migration, renderers and schema tests |
 | Source-derived initial review values | `pronto_report/review/source_defaults.py` | reviewed values must remain intact |
 | Review inclusion, finalization or correction rules | `pronto_report/review/service.py` | command contracts, review service tests |
@@ -45,6 +50,7 @@ must not silently change imported facts or persistence rules.
 | `working-draft.js` | Working-draft protocol integration |
 | `review-v3.js` | Linked version-3 review fields, plot controls and section QC |
 | `review-v4.js` | Unified finding interactions and manual CNV rows |
+| `post-qc-rna.js` | File selection, preview, disclosed QC mapping and explicit confirmation |
 | `table-views.js` | Compact/full columns, source detail indexes and expanded tables |
 | `report-igv.js` | IGV dialog, local file lifecycle and optional preservation |
 | `report-attribution.js` | Attributed export/print command behavior |

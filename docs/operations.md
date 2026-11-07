@@ -4,6 +4,18 @@ The supported launch path is the local desktop app. Its WSGI listener is bound
 to loopback. Keep source code and private operational data separate. The
 repository contains no deployed database, credentials or installation key.
 
+Migration 0015 adds late source versions. Existing desktops back up the database
+before migrating. Retain original keys, database and `raw_imports` together.
+Raw post-QC workbooks are also stored inside the private database source-version
+archive, so database backups now include them. Never roll back the schema by
+dropping source-version tables; restore the complete pre-upgrade backup instead.
+
+Desktop runtime sets `PRONTO_RAW_IMPORT_ROOT` to its private `raw_imports` root.
+When using a separately configured local web launcher, set that value explicitly
+if older reports need archived DNA/RNA linkage for late post-QC imports. Newly
+imported reports retain validated RNA IDs in SQL. The path is not a public upload
+directory. See [post-QC workflow](post-qc-rna.md).
+
 ## Installation and identity
 
 Install 64-bit Python 3.14 and the desktop requirements. Use a virtual environment

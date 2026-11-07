@@ -20,9 +20,14 @@ from reportlab.platypus import (
 from pronto_report.migration import migrate_review_state_to_v3
 from pronto_report.serialization import serialize_report_data, serialize_review_state
 
-from .source_fields import cnv_display_fields, effect_label, rna_display_fields
+from .source_fields import (
+    clinical_class_label,
+    cnv_display_fields,
+    effect_label,
+    rna_display_fields,
+)
 
-TEMPLATE_VERSION = "2.1"
+TEMPLATE_VERSION = "2.2"
 BLUE = "#203b63"
 GREEN = "#14592c"
 OLIVE = "#708322"
@@ -45,6 +50,9 @@ FIELD_LABELS = {
 
 
 def project_report_export(report, review):
+    from pronto_report.review.rna_qc import validate_rna_review
+
+    validate_rna_review(report, review)
     if review.report_id != report.report_id:
         raise ValueError("Saved report/review mismatch")
     from .display_copy import presentation_copy
@@ -403,16 +411,18 @@ def _cnv_table(model, width):
 
 def _rna_table(model, width):
     return _table(
-        ["Gene A", "Gene B", "Event", "Transcript A", "Exon A", "Exon B", "Source QC"],
+        ["Fusion / splice variant", "Clinical class", "Transcripts", "Technical QC", "Review"],
         [
             [
-                item["fields"].get("Gene_A"),
-                item["fields"].get("Gene_B"),
-                item["fields"].get("Provisional_Event_Type"),
-                item["fields"].get("Transcript_A") or item["fields"].get("Transcript_S"),
-                item["fields"].get("Exon_A"),
-                item["fields"].get("Exon_B"),
-                item["fields"].get("QC_Verdict"),
+                item["fields"].get("Report_Label"),
+                clinical_class_label(item["review"].get("clinicalClassification")),
+                " / ".join(
+                    str(item["fields"][key])
+                    for key in ("Transcript_A", "Transcript_B", "Transcript_S")
+                    if item["fields"].get(key) not in (None, "", ".", "N/A")
+                ),
+                item["fields"].get("QC_Label"),
+                item["review"].get("comment", ""),
             ]
             for item in model["rna"]
         ],
@@ -439,8 +449,8 @@ def _highlight_table(model, width, color=OLIVE):
                             if f.get(k) not in (None, "")
                         )
                         if key == "cnv"
-                        else f.get("Event_ID") or f.get("Gene_B"),
-                        label,
+                        else f.get("Report_Label"),
+                        item["review"].get("clinicalClassification", label),
                     ]
                 )
     rows.extend(
@@ -505,8 +515,15 @@ def _draw_column(canvas, flowables, x, top, width, height):
 
 
 def render_report_pdf(
-    report, review, *, layout, export_initials, figure_assets: Mapping[str, bytes] | None = None
+    report,
+    review,
+    *,
+    layout,
+    export_initials,
+    figure_assets: Mapping[str, bytes] | None = None,
+    plot_images=None,
 ):
+    """Render a saved source/review pair with verified private assets supplied by the caller."""
     if layout not in {"PRESENTATION", "ESMO"} or not export_initials:
         raise ValueError("Invalid PDF layout or attribution")
     model = project_report_export(report, review)
@@ -587,6 +604,9 @@ def render_report_pdf(
         from .presentation_pdf import presentation_story
 
         story, first = presentation_story(model, doc, export_initials)
+        from .cnv_appendix import appendix_story
+
+        story.extend(appendix_story(report, plot_images or {}, width, doc.height))
         if model["figures"]:
             assets = figure_assets or {}
             for number, figure in enumerate(model["figures"], 1):

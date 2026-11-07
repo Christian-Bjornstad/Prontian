@@ -18,6 +18,8 @@ erDiagram
     ReportRecord ||--o{ ReportGrant : grants
     ReportRecord ||--o{ ReportWriteGrant : grants
     ReportRecord ||--o{ ReviewRevision : preserves
+    ReportRecord ||--o{ ReportSourceRevision : versions_sources
+    User ||--o{ ReportSourceRevision : imports
     ReportRecord ||--o| WorkingDraft : edits
     ReportRecord ||--o{ WorkingDraftEvent : tracks
     ReportRecord ||--o{ ReviewAudit : records
@@ -30,12 +32,23 @@ erDiagram
         string report_id PK
         json report_data
         boolean team_shared
+        json rna_sample_ids
     }
     ReviewRevision {
         bigint id PK
         string report_id FK
         int revision
         json review_data
+    }
+    ReportSourceRevision {
+        bigint id PK
+        string report_id FK
+        int effective_revision
+        json report_data
+        json source_files
+        binary source_archive
+        int actor_id FK
+        datetime created_at
     }
     WorkingDraft {
         bigint id PK
@@ -163,12 +176,32 @@ the preserved review. AdministrationEvent records privileged account/history act
 | ReviewState 1.0 | `review-state-v1.schema.json` | Original review contract |
 | ReviewState 2.0 | `review-state-v2.schema.json` | Structured notes and attribution |
 | ReviewState 3.0 | `review-state-v3.schema.json` | Finding/biomarker review and section QC |
-| ReviewState 4.0 | `review-state-v4.schema.json` | Current review including manual CNV rows |
+| ReviewState 4.0 | `review-state-v4.schema.json` | Manual CNV rows and source review |
+| ReviewState 5.0 | `review-state-v5.schema.json` | Adds independent RNA clinical classification |
 
 Schemas live in [schemas](../pronto_report/schemas). Validation also checks
 cross-document identity and occurrence references. Serialization is deterministic;
 Python snapshots freeze nested objects. `migration.py` and `review/source_defaults.py`
 upgrade old review documents while preserving already reviewed values.
+
+## Late source revisions
+
+Migration 0015 adds `ReportSourceRevision` and validated RNA linkage on
+`ReportRecord`. The original `report_data` stays immutable. A confirmed late
+post-QC import preserves the previous working review, then appends source facts
+effective at a new review revision. Original workbook bytes live in the private
+source-version ZIP blob with filenames, sizes and SHA-256 metadata.
+An original ReportData 1.0 document remains 1.0 in history; a new post-QC source
+snapshot explicitly uses ReportData 2.0, which supports complete source tables.
+
+`source_versions.load_report(record, revision=...)` is the shared source resolver
+for review pages, save/finalize, HTML export and PDF export. Historical reviews
+resolve the latest source version at or before their revision; current pages
+resolve sources at the actual working review revision. Reopening history binds
+the selected historical sources to the new draft as well. Export freeze compares
+both review choices and source identity before reusing a saved snapshot.
+
+See [post-QC workflow](post-qc-rna.md) for replacement scopes and size limits.
 
 ## Migration and recovery
 

@@ -297,12 +297,14 @@ class DesktopRuntime:
                     "DJANGO_SETTINGS_MODULE": "pronto_web.local_settings",
                     "PRONTO_DJANGO_SECRET_KEY": key,
                     "PRONTO_DJANGO_DB": str(self.database_path),
+                    "PRONTO_RAW_IMPORT_ROOT": str(self.raw_root),
                 }
             )
             if not apps.ready:
                 import django
 
                 django.setup()
+            settings.PRONTO_RAW_IMPORT_ROOT = str(self.raw_root)
             if not self._legacy:
                 # External data roots must never inherit legacy .local-web reference
                 # discovery. Explicit environment configuration remains supported.

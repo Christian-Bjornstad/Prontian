@@ -24,6 +24,7 @@ See [production readiness](docs/production-readiness.md) before deployment.
 | Your goal | Read |
 | --- | --- |
 | Install, import and review a report | [Norwegian user guide](docs/desktop-app.md) |
+| Add late post-QC fusion/splice files and MOL CNV pages | [Post-QC guide](docs/post-qc-rna.md) |
 | Understand the whole system | [Architecture and diagrams](docs/architecture.md) |
 | Understand exactly which input files are used | [Input contract and import pipeline](docs/data-flow.md) |
 | Understand stored data, permissions and revisions | [Database guide and ER diagrams](docs/database.md) |
@@ -44,8 +45,12 @@ See [production readiness](docs/production-readiness.md) before deployment.
   defaults, value corrections, include/exclude decisions and report highlights.
 - Supports small variant, CNV and RNA review; QC plots; searchable compact/full
   tables; comments; manual CNV rows; and presentation figures.
+- Accepts late post-QC RNA workbooks through an exact-sample preview and explicit
+  confirmation. Source history stays attached to its review revision; RNA
+  Oncogenic/VUS classification is independent of technical QC.
 - Uses saved review state for summary HTML and two PDF layouts: ESMO and
   presentation. Exports have attributed audit records.
+- Appends standard CNV overview panels A2, then B3/C1, to the landscape MOL PDF.
 - Provides IGV region inspection using bundled browser code and local reference
   files. Persistent alignment storage is optional and disabled without policy
   and quota configuration on a supported Linux host. Windows supports local viewing.

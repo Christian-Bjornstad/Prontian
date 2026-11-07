@@ -57,6 +57,7 @@ from pronto_web.reports.alignment_registry import (
 from pronto_web.reports.alignment_store import StorageLimitError, UnsafeAlignmentPath
 from pronto_web.reports.models import ReportGrant, ReportRecord, ReportWriteGrant, ReviewRevision
 from pronto_web.reports.review_repository import DjangoReviewAuthorizer, DjangoReviewRepository
+from pronto_web.reports.source_versions import load_report
 
 MAX_REVIEW_COMMAND_BYTES = 1024 * 1024
 
@@ -130,9 +131,6 @@ def report_detail(request, report_id: str) -> HttpResponse:
         user=request.user,
     )
     record = grant.report
-    report = validate_report_data(record.report_data)
-    if report.report_id != record.report_id:
-        raise ValueError("Stored report identifier does not match its record")
     historical = "revision" in request.GET
     revisions = ReviewRevision.objects.filter(report=record)
     if historical:
@@ -142,13 +140,14 @@ def report_detail(request, report_id: str) -> HttpResponse:
         latest = get_object_or_404(revisions, revision=int(requested))
     else:
         latest = revisions.order_by("-revision").first()
+    report = load_report(record, revision=latest.revision if latest else None)
     review = validate_review_state(latest.review_data, report=report) if latest else None
     if latest is not None and review.revision != latest.revision:
         raise ValueError("Stored review revision does not match its record")
     needs_upgrade = (
         review is not None
         and review.status == "DRAFT"
-        and review.schema_version != "3.0"
+        and review.schema_version not in {"3.0", "4.0", "5.0"}
         and not historical
     )
     if review is not None and not historical:
@@ -158,6 +157,9 @@ def report_detail(request, report_id: str) -> HttpResponse:
         from .working_drafts import current_working
 
         review, working_version = current_working(record, report)
+        # A source upload may commit between reads. Bind facts to the review we
+        # actually obtained, rather than whichever source happened to be latest.
+        report = load_report(record, revision=review.revision if review else None)
         if review and review.status == "FINAL":
             from pronto_report.review.source_defaults import upgrade_review
 
@@ -231,6 +233,7 @@ def report_detail(request, report_id: str) -> HttpResponse:
         else None,
         pdf_export_url=reverse("report-pdf-export", args=[record.pk]) if saved_view else None,
         figure_upload_url=reverse("presentation-upload", args=[record.pk]) if draft else None,
+        post_qc_upload_url=reverse("post-qc-rna", args=[record.pk]) if draft else None,
         figure_assets={
             str(f.pk): bytes(f.content)
             for f in record.presentation_figures.all()
@@ -254,7 +257,9 @@ def report_detail(request, report_id: str) -> HttpResponse:
     if settings.PRONTO_WORKING_DRAFTS and review:
         from .working_drafts import current_working
 
-        current, version = current_working(record, report)
+        current, version = (
+            current_working(record, report) if historical else (review, working_version)
+        )
         config = {
             "url": reverse("working-command", args=[record.pk]),
             "version": version,
@@ -329,7 +334,7 @@ def _review_command(request, report_id: str, command_type, action: str) -> HttpR
     )
     if grant is None:
         return _review_error(ReviewCommandError("REVIEW_NOT_FOUND", "Report not found", 404))
-    report = validate_report_data(grant.report.report_data)
+    report = load_report(grant.report)
     if report.report_id != grant.report_id:
         raise ValueError("Stored report identifier does not match its record")
     try:
@@ -364,6 +369,8 @@ def alignment_component(request, report_id: str, source_id: str, component: str)
     if component not in {"data", "index"}:
         return HttpResponse(status=404)
     record = grant.report
+    # Alignment identity is fixed by the original import. Late RNA table
+    # versions do not change its sample/build or need loading for every range.
     report = validate_report_data(record.report_data)
     if report.report_id != record.report_id:
         return HttpResponse(status=404)
