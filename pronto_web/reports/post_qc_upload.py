@@ -112,6 +112,11 @@ def post_qc_rna(request, report_id):
             if not token:
                 return JsonResponse(
                     {
+                        "target": {
+                            "reportId": report_id,
+                            "sampleId": report.sample["sampleId"],
+                            "runId": report.run["runId"],
+                        },
                         "files": previews,
                         "replacementScope": [
                             {"sampleId": sample, "kind": kind}

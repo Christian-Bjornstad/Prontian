@@ -18,6 +18,9 @@ window.initPostQcRna = function ({ state, busy, isDirty, setExporting }) {
   });
   function showPreview(result) {
     preview.replaceChildren();
+    const destination = document.createElement("p");
+    destination.textContent = `Destination: ${result.target.sampleId} / run ${result.target.runId}. Verify the selected files come from this run's post-QC folder; the workbook does not establish run identity.`;
+    preview.append(destination);
     const scope = document.createElement("p");
     scope.textContent = `Replaces these source categories: ${result.replacementScope.map((item) => `${item.sampleId} / ${item.kind}`).join(", ")}. Replaced findings require fresh review. Other findings and notes are kept.`;
     preview.append(scope);

@@ -12,6 +12,9 @@
 4. Trykk **Preview post-QC files**. Kontroller prøve-ID, kategori, gener,
    eksoner, lesestøtte, konsekvens og teknisk QC. Forhåndsvisningen viser hvilke
    kombinasjoner av RNA-prøve og hendelsestype som erstattes.
+   Den viser også hvilken DNA-prøve og kjøring filene skal knyttes til. Kontroller
+   at filene kommer fra denne kjøringens post-QC-mappe: arbeidsbokformatet har
+   ikke en påkrevd kjørings-ID som programmet kan kontrollere automatisk.
 5. Trykk **Import confirmed post-QC files**. Originalfilene arkiveres, og et
    nytt utkast med versjonert kildegrunnlag åpnes. Andre funn og notater beholdes.
    Erstatter du fusjoner, krever disse ny vurdering; øvrige splice-funn beholdes.

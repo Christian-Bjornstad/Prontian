@@ -24,6 +24,11 @@ revision/version. Application rechecks that identity inside a
 [database transaction](https://docs.djangoproject.com/en/5.2/topics/db/transactions/).
 No files are staged persistently before confirmation.
 
+The supplied workbook format does not establish a sequencing run ID. The
+preview therefore names the destination DNA sample/run and requires the reviewer
+to check the source folder before confirming. Exact RNA linkage is machine
+validated; workbook origin within a run remains an explicit human confirmation.
+
 The replacement unit is an exact RNA sample/event category present in a nonempty
 workbook. Replaced candidates start unreviewed; other findings and notes remain.
 Technical QC is explicit source evidence, separate from v5 human clinical class.

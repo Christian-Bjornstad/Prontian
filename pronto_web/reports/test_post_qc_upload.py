@@ -54,6 +54,8 @@ class PostQcUploadTests(TestCase):
         original = self.record.report_data
         preview = self.upload()
         assert preview.status_code == 200
+        assert preview.json()["target"]["runId"] == self.report.run["runId"]
+        assert preview.json()["target"]["sampleId"] == self.report.sample["sampleId"]
         assert preview.json()["files"][0]["rows"][0]["qc"] == "PASS"
         assert not ReportSourceRevision.objects.exists()
         applied = self.upload(token=preview.json()["previewToken"])

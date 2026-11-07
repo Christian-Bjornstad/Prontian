@@ -70,7 +70,7 @@ Recommended next steps, in priority order:
    arbitrary network starting directory by the application; do not promise that
    a web-only picker can control the operating system's folder history.
 3. **Producer-generated run manifest:** a small versioned JSON/TSV list containing
-   exact sample, role, relative path, size and checksum would avoid recursively
+   run ID, exact sample, role, relative path, size and checksum would avoid recursively
    searching a run. Validate containment, identity and current bytes again at
    import; a manifest must not authorize a path by itself.
 4. **Measure the actual bottleneck on the intended share:** record directory

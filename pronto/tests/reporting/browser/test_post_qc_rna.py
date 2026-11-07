@@ -80,6 +80,7 @@ def test_preview_discloses_reversed_columns_and_sends_confirmed_bytes(browser, t
         route.fulfill(
             json={
                 "files": [{"name": NAME, "sha256": table["sha256"], "rows": preview}],
+                "target": {"sampleId": report.sample["sampleId"], "runId": report.run["runId"]},
                 "replacementScope": [{"sampleId": RNA, "kind": "Fusion"}],
                 "previewToken": "synthetic-preview-token",
             }
@@ -104,6 +105,7 @@ def test_preview_discloses_reversed_columns_and_sends_confirmed_bytes(browser, t
             page.get_by_role("button", name="Preview post-QC files", exact=True).click()
             preview_panel = page.locator("[data-post-qc-preview]")
             playwright.expect(preview_panel).to_contain_text("Reversed: Outcome contains QC")
+            playwright.expect(preview_panel).to_contain_text(str(report.run["runId"]))
             assert (
                 "PASS" in preview_panel.inner_text()
                 and "out-of-frame" in preview_panel.inner_text()
