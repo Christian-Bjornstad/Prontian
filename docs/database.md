@@ -191,6 +191,8 @@ Migration 0015 adds `ReportSourceRevision` and validated RNA linkage on
 post-QC import preserves the previous working review, then appends source facts
 effective at a new review revision. Original workbook bytes live in the private
 source-version ZIP blob with filenames, sizes and SHA-256 metadata.
+An original ReportData 1.0 document remains 1.0 in history; a new post-QC source
+snapshot explicitly uses ReportData 2.0, which supports complete source tables.
 
 `source_versions.load_report(record, revision=...)` is the shared source resolver
 for review pages, save/finalize, HTML export and PDF export. Historical reviews

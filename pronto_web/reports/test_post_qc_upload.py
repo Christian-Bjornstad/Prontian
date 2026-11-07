@@ -51,7 +51,16 @@ class PostQcUploadTests(TestCase):
         from pronto_web.reports.models import ReportSourceRevision, WorkingDraft
         from pronto_web.reports.source_versions import load_report
 
-        original = self.record.report_data
+        from pronto_report.validation import validate_report_data
+
+        original = json.loads(json.dumps(self.record.report_data))
+        original["schemaVersion"] = "1.0"
+        original.pop("sourceTables", None)
+        for metric in original["biomarkers"]:
+            metric.pop("displayRange", None)
+        validate_report_data(original)
+        self.record.report_data = original
+        self.record.save(update_fields=["report_data"])
         preview = self.upload()
         assert preview.status_code == 200
         assert preview.json()["target"]["runId"] == self.report.run["runId"]
@@ -63,6 +72,8 @@ class PostQcUploadTests(TestCase):
         self.record.refresh_from_db()
         assert self.record.report_data == original
         current = load_report(self.record)
+        assert current.schema_version == "2.0"
+        assert load_report(self.record, revision=1).schema_version == "1.0"
         assert any(t["tableId"].startswith("postqc-") for t in current.source_tables)
         assert not any(
             t["tableId"].startswith("postqc-")

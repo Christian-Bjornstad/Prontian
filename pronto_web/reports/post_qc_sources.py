@@ -27,6 +27,9 @@ def compose_sources(report, review, tables, *, revision, actor, timestamp):
     raw cells, including failed candidates, remain in the new source snapshot.
     """
     document = json.loads(serialize_report_data(report))
+    # Complete source tables belong to v2. The new snapshot upgrades that
+    # boundary explicitly while the historical v1 document stays untouched.
+    document["schemaVersion"] = "2.0"
     scopes = replacement_scope(tables)
     removed, retained = set(), []
     for table in document.get("sourceTables", []):
