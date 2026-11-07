@@ -48,10 +48,9 @@ class PostQcUploadTests(TestCase):
         return self.upload(payload, token=preview.json()["previewToken"])
 
     def test_preview_apply_preserves_original_source_and_old_revision(self):
+        from pronto_report.validation import validate_report_data
         from pronto_web.reports.models import ReportSourceRevision, WorkingDraft
         from pronto_web.reports.source_versions import load_report
-
-        from pronto_report.validation import validate_report_data
 
         original = json.loads(json.dumps(self.record.report_data))
         original["schemaVersion"] = "1.0"
