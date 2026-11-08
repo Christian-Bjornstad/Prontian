@@ -48,7 +48,7 @@ rpds-py==2026.9.1
     #   referencing
 six==1.17.0
     # via rfc3339-validator
-sqlparse==0.6.0
+sqlparse==0.6.1
     # via django
 tzdata==2026.6 ; sys_platform == 'win32'
     # via django

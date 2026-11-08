@@ -8,6 +8,8 @@
   package compatibility in CI, and constrain the development lock by runtime.
 - Group Dependabot proposals by ecosystem and document regeneration and merge
   procedures. Add public issue forms, a PR template and clear documentation links.
+- Keep Django/Qt routine updates within validated feature series, and apply
+  reviewed patch maintenance for Ruff, coverage, filelock, platformdirs and sqlparse.
 
 ## Unreleased — post-QC RNA and MOL CNV appendices
 

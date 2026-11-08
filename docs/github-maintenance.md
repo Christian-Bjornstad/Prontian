@@ -29,9 +29,12 @@ Jobs have explicit time limits and a read-only repository token.
 6. Wait for all four checks on the latest PR commit, merge, and verify `main` CI.
 
 Dependabot groups Python, JavaScript tooling and Actions separately to reduce
-competing PRs. Routine major `pyee` and minor/major Qt-runtime updates are left to
-their parent packages' compatibility constraints. Security reports and CI audits
-remain active. Configuration follows the
+competing PRs. The Python maintenance group accepts minor/patch updates. Django
+5.2 and PyQt6 6.11 remain on their validated feature series; routine updates to
+those packages are patch releases. A framework/GUI series upgrade needs a separate
+migration and validation change. Routine major `pyee` and minor/major Qt-runtime
+updates are left to their parent packages' compatibility constraints. Security
+reports and CI audits remain active. Configuration follows the
 [GitHub Dependabot options](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).
 
 The input/lock gate detects manifest drift and shared runtime/dev mismatches;
@@ -51,6 +54,12 @@ the intended Playwright 1.64.1 and ReportLab 5.1.0 updates. Synchronizing the No
 manifest retained jsdom 31.0.0 and Mermaid 12.3.0. Clean installs and actual test
 execution verify these combinations; no tests or audits are disabled to make an
 upgrade appear green. The new regression checks cover these input/lock failures.
+
+The first grouped proposal after recovery also attempted Django 6.1 and PyQt6
+6.12, while retaining Qt 6.11. Installation rejected that combination. Its small
+maintenance changes were separated: Ruff 0.17.4, coverage 7.17.2, filelock 4.2.9,
+platformdirs 4.14.5 and sqlparse 0.6.1. The Django/Qt series upgrade was deferred
+explicitly, and their routine update rules now preserve the validated series.
 
 ## Local tools
 
