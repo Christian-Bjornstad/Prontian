@@ -1,7 +1,11 @@
 # Prontian
 
-[![CI](https://github.com/Christian-Bjornstad/Prontian/actions/workflows/ci.yml/badge.svg)](https://github.com/Christian-Bjornstad/Prontian/actions/workflows/ci.yml)
+[![CI](https://github.com/Christian-Bjornstad/Prontian/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Christian-Bjornstad/Prontian/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](pyproject.toml)
+
+[User guide](docs/desktop-app.md) · [Architecture](docs/architecture.md) ·
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 **From sequencing output folders to a traceable molecular review and report.**
 

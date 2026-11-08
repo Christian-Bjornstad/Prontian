@@ -1,0 +1,26 @@
+name: Improvement proposal
+description: Explain the workflow problem and how an improvement would help.
+title: "[Enhancement] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Use fictional examples. Do not include patient details, operational exports or private paths.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Workflow problem
+      description: Who encounters this and what currently makes the work difficult?
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Desired result
+      description: Describe an observable outcome and a concrete example.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or constraints

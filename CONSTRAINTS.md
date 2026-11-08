@@ -16,6 +16,8 @@ The commands in CONTRIBUTING.md and CI enforce the same baseline.
   reference. Public boundary functions document purpose and invariants.
 - Documentation links, JavaScript syntax and owned browser lint must pass.
 - Runtime and development dependency audits must pass without ignored advisories.
+- Direct dependency inputs and generated locks agree; runtime/dev locks share
+  the same runtime graph, and installation plus `pip check` validate compatibility.
 - No production data, credentials, SQLite files, raw reads or local configuration
   may be committed. Public fixtures have explicit provenance.
 - Preserve schema versions, migrations, immutable source values, optimistic

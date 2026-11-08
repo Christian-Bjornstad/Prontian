@@ -1,5 +1,35 @@
 # Validation record
 
+## GitHub and dependency recovery — 2026-11-08
+
+Dependency installation failed on `main` after separately merged updates.
+The resolver reproduced the incompatible pyee 16/Playwright 1.64.1 pins, and
+`npm ci` reproduced the jsdom input/lock mismatch. Universal lock regeneration
+also corrected the Qt runtime to PyQt6's supported 6.11 series.
+
+| Check | Result after repair |
+| --- | --- |
+| Python/core suite with resolved upgrades | 588 passed; 18 existing platform/capability skips |
+| Django request/persistence suite | 133 run, OK, one existing platform skip |
+| Chromium workflows | 82 passed with Playwright 1.64.1 and matching Chromium 156 |
+| Dependency contract regression suite | Five passed |
+| Clean dependency installation | Locked Python environment, `pip check` and `npm ci` passed |
+| Runtime/development Python audits | No known vulnerabilities |
+| Node tooling audit | Zero vulnerabilities |
+| Quality/documentation | Lint, format, 267-source reference, links and ten Mermaid diagrams passed |
+| Migration consistency | No changes detected |
+
+The shared-lock mutation was caught by its regression; the checker was restored
+byte-for-byte and all five contract tests passed again. A separate read-only
+review found no actionable issues. Existing tests, audits and skip policy were
+preserved. ReportLab 5.1.0, jsdom 31.0.0 and Mermaid 12.3.0 remained in the tested
+environment; compatibility pins resolve pyee 14.0.0 and Qt 6.11.2.
+
+The repository now requires all four checks for `main`, including administrator
+merges, and requires a PR without an extra-person approval requirement. Six
+branches were removed only after verifying they were already merged. Historical
+failed runs remain as evidence. See [maintenance](github-maintenance.md).
+
 ## Post-QC RNA and MOL appendices — 2026-11-07
 
 | Check | Local result |
