@@ -28,7 +28,7 @@ cyclonedx-python-lib==11.12.0
     # via pip-audit
 defusedxml==0.7.1
     # via py-serializable
-django==5.2.17
+django==5.2.19
     # via
     #   -c requirements-lock.txt
     #   -r requirements.txt
