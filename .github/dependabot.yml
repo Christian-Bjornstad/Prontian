@@ -10,9 +10,16 @@ updates:
     groups:
       python-environment:
         patterns: ['*']
+        update-types: [minor, patch]
     # These are transitive compatibility choices, resolved by their parents.
     # Do not raise Qt beyond PyQt6 or pyee beyond Playwright independently.
     ignore:
+      # Framework/GUI series upgrades are separate migrations; keep receiving
+      # patch updates within the currently validated Django 5.2 / Qt 6.11 lines.
+      - dependency-name: django
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: pyqt6
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: pyee
         update-types: ['version-update:semver-major']
       - dependency-name: pyqt6-qt6
