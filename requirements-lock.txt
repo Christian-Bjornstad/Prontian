@@ -8,7 +8,7 @@ attrs==26.1.0
     #   referencing
 charset-normalizer==3.5.2
     # via reportlab
-django==5.2.17
+django==5.2.19
     # via -r requirements.txt
 et-xmlfile==2.0.0
     # via openpyxl
