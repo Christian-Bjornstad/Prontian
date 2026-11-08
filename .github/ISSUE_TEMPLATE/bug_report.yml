@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible software problem using synthetic data.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is public. Use synthetic examples only; exclude patient data,
+        report exports, private paths, credentials and installation keys.
+        Report vulnerabilities through Security → Report a vulnerability.
+  - type: input
+    id: revision
+    attributes:
+      label: Application commit and environment
+      description: Commit/version, operating system and Python version.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Steps and a minimal synthetic input, if needed.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Relevant diagnostics
+      description: Include only sanitized errors or CI links; review screenshots before uploading.

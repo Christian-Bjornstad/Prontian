@@ -6,7 +6,8 @@ preserve existing source/review separation, authorization and concurrency rules.
 
 ## Development environment
 
-Use CPython 3.14 and Node.js 24. Commands below use PowerShell; on Linux replace
+Use CPython 3.14 and Node.js 24.15 or newer in the 24 series (required by jsdom 31).
+Commands below use PowerShell; on Linux replace
 `.venv\Scripts\python.exe` with `.venv/bin/python`.
 
 ```powershell
@@ -81,13 +82,25 @@ With `uv` installed, regenerate after an intentional dependency change:
 
 ```powershell
 uv pip compile requirements-desktop.txt --universal --python-version 3.14 --output-file requirements-lock.txt
-uv pip compile requirements-dev.txt --universal --python-version 3.14 --output-file requirements-dev-lock.txt
+uv pip compile requirements-dev.txt --universal --python-version 3.14 --constraint requirements-lock.txt --output-file requirements-dev-lock.txt
 ```
 
 `package-lock.json` pins Node development tools. The minimatch override selects
 the advisory-fixed 11.0.1 release for tooling; ESLint and Mermaid checks verify
 the resolved tooling still works. Node dependencies are not shipped with the
 Python application. Review each upgrade and audit the resolved dependencies.
+
+Run `python scripts/check_dependencies.py` before installing a proposed update.
+It compares all direct input pins with their locks, requires the development
+environment to contain the same runtime graph, and checks Node manifest/lock
+agreement. CI runs it before installation and runs `pip check` afterward.
+The compiler and package installer remain responsible for transitive compatibility.
+
+Dependabot groups related updates by ecosystem. Regenerate Python locks on its
+branch before merging if the input/lock gate fails. Do not independently raise
+`pyee` beyond Playwright's supported major, or the Qt runtime beyond PyQt6's
+supported minor. Keep runtime and development dependencies audited without ignored
+advisories. See [GitHub maintenance](docs/github-maintenance.md).
 
 ## Changing persistence
 

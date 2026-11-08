@@ -47,6 +47,7 @@ def main() -> int:
     if npm is None:
         raise SystemExit("Install Node.js and run npm ci --ignore-scripts first.")
     commands = [
+        [sys.executable, "scripts/check_dependencies.py"],
         [sys.executable, "-m", "ruff", "check", "."],
         [sys.executable, "-m", "ruff", "format", "--check", "."],
         [sys.executable, "scripts/document_code.py", "--check"],

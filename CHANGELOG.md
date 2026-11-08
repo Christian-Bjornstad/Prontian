@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — GitHub and dependency maintenance
+
+- Repair incompatible Playwright/pyee and PyQt6/Qt lock updates, and synchronize
+  the jsdom manifest with its lock. Retain the intended supported direct upgrades.
+- Check dependency input/lock agreement before installation, verify installed
+  package compatibility in CI, and constrain the development lock by runtime.
+- Group Dependabot proposals by ecosystem and document regeneration and merge
+  procedures. Add public issue forms, a PR template and clear documentation links.
+
 ## Unreleased — post-QC RNA and MOL CNV appendices
 
 - Select late fusion/splice XLSX files directly from RNA review, preview exact

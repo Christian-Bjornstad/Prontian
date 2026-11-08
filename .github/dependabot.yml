@@ -5,12 +5,30 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Update the Python environment as one reviewable unit. Generated locks
+    # still need uv regeneration and all four required CI jobs before merge.
+    groups:
+      python-environment:
+        patterns: ['*']
+    # These are transitive compatibility choices, resolved by their parents.
+    # Do not raise Qt beyond PyQt6 or pyee beyond Playwright independently.
+    ignore:
+      - dependency-name: pyee
+        update-types: ['version-update:semver-major']
+      - dependency-name: pyqt6-qt6
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      javascript-tooling:
+        patterns: ['*']
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      github-actions:
+        patterns: ['*']
