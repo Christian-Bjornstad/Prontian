@@ -106,7 +106,7 @@ pygments==2.21.0
     #   rich
 pyparsing==3.3.3
     # via pip-requirements-parser
-pypdf==6.21.4
+pypdf==7.0.1
     # via
     #   -r requirements-browser.txt
     #   -r requirements-test.txt
