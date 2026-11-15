@@ -24,13 +24,13 @@ pillow==13.0.0
     # via
     #   pdf2image
     #   reportlab
-pypdfium2==5.14.0
+pypdfium2==5.15.2
     # via -r requirements.txt
 pyqt6==6.11.0
     # via -r requirements-desktop.txt
 pyqt6-qt6==6.11.2
     # via pyqt6
-pyqt6-sip==13.13.0
+pyqt6-sip==13.13.1
     # via pyqt6
 pysam==0.24.1 ; sys_platform != 'win32'
     # via -r requirements.txt
