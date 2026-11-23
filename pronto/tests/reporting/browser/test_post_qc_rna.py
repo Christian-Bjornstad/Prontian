@@ -16,7 +16,10 @@ from pronto_report.validation import validate_report_data, validate_review_state
 
 def rna_case():
     table, _ = read_post_qc_workbook(
-        workbook(row(), row(QC_Verdict="FAIL", Event_ID="SYN-failed-event")),
+        workbook(
+            row(Outcome="OK", QC_Verdict="inframe"),
+            row(QC_Verdict="FAIL", Event_ID="SYN-failed-event"),
+        ),
         NAME,
         allowed_rna_ids={RNA},
     )
@@ -43,6 +46,10 @@ def test_rna_class_include_and_download_keep_v5_and_guard_failed_qc(browser, tmp
             assert rows.count() == 2
             rows.nth(0).locator("[data-rna-class]").select_option("ONCOGENIC")
             rows.nth(0).locator('[data-source-action="INCLUDE"]').click()
+            rows.nth(0).locator('[data-source-action="EXCLUDE"]').click()
+            rows.nth(0).locator('[data-source-action="INCLUDE"]').click()
+            rows.nth(0).locator("[data-rna-technical-qc]").select_option("REVIEWED")
+            assert "inframe" in rows.nth(0).inner_text()
             assert rows.nth(1).locator('[data-source-action="INCLUDE"]').is_disabled()
             assert "AKT3 (exon 1)::CEP112 (exon 17)" in rows.nth(0).inner_text()
             page.get_by_role("tab", name="Variant review").click()
@@ -54,6 +61,7 @@ def test_rna_class_include_and_download_keep_v5_and_guard_failed_qc(browser, tmp
                 item for item in saved["findingReviews"] if item["reportingDecision"] == "INCLUDE"
             )
             assert chosen["clinicalClassification"] == "ONCOGENIC"
+            assert chosen["technicalQc"] == "REVIEWED"
             assert not errors
         finally:
             context.close()

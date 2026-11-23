@@ -37,6 +37,7 @@ window.initPostQcRna = function ({ state, busy, isDirty, setExporting }) {
         "Source support (%)",
         "Report support",
         "Outcome",
+        "QC Verdict (Excel)",
         "Technical QC",
         "Column interpretation",
       ]) {
@@ -55,6 +56,7 @@ window.initPostQcRna = function ({ state, busy, isDirty, setExporting }) {
           item.rawSupport,
           item.support,
           item.outcome || "Not provided",
+          item.qcVerdict || "Not provided",
           item.qc,
           item.columnsSwapped
             ? "Reversed: Outcome contains QC; QC_Verdict contains consequence"

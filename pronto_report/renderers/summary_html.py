@@ -226,12 +226,20 @@ def _render_v3(report, review, initials):
     for key, title in [("cnv", "Selected CNV"), ("rna", "Selected RNA")]:
         headers = list(dict.fromkeys(h for row in model[key] for h in row["fields"]))
         if key == "rna":
+            from pronto_report.review.rna_qc import RNA_QC_REVIEW_LABELS
+
             headers = [
                 "Report_Label",
+                "QC Verdict",
                 "Clinical class",
-                *[h for h in headers if h != "Report_Label"],
+                "Technical QC",
+                *[h for h in headers if h not in {"Report_Label", "QC_Verdict_Label"}],
             ]
             for row in model[key]:
+                row["fields"]["QC Verdict"] = row["fields"].get("QC_Verdict_Label")
+                row["fields"]["Technical QC"] = RNA_QC_REVIEW_LABELS[
+                    row["review"].get("technicalQc", "NOT_REVIEWED")
+                ]
                 row["fields"]["Clinical class"] = row["review"].get(
                     "clinicalClassification", "UNCLASSIFIED"
                 )

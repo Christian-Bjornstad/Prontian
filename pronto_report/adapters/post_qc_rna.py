@@ -26,8 +26,20 @@ OUTCOMES = {
     "truncated-loss": "truncated-loss",
     "unknown": "unknown",
 }
+OUTCOME_ALIASES = {"inframe": "in-frame", "outofframe": "out-of-frame"}
 QC = {"pass": "PASS", "ok": "PASS", "fail": "FAIL"}
 EMPTY = {"", ".", "n/a", "na", "none"}
+_DISPLAY_HEADERS = {
+    "genea": "Gene_A",
+    "gena": "Gene_A",
+    "geneb": "Gene_B",
+    "genb": "Gene_B",
+    "exona": "Exon_A",
+    "exonb": "Exon_B",
+    "qcverdict": "QC_Verdict",
+    "outcome": "Outcome",
+    "eventsupportdeduppercentage": "Event_Support_Dedup_Percentage",
+}
 
 
 class PostQcProblem(ValueError):
@@ -36,6 +48,22 @@ class PostQcProblem(ValueError):
 
 def _text(value):
     return "" if value is None or str(value).strip().casefold() in EMPTY else str(value).strip()
+
+
+def canonical_header(header):
+    """Map established workbook spellings without changing the archived headers."""
+    key = re.sub(r"[\s_]+", "", header.casefold())
+    return _DISPLAY_HEADERS.get(key, header)
+
+
+def display_source_fields(fields):
+    """Expose canonical access to gene, exon, support and QC source cells."""
+    return {**{canonical_header(key): value for key, value in fields.items()}, **fields}
+
+
+def _outcome_key(value):
+    key = re.sub(r"[\s_]+", "-", value.casefold())
+    return OUTCOME_ALIASES.get(key.replace("-", ""), key)
 
 
 def event_kind(fields):
@@ -72,9 +100,9 @@ def technical_qc(fields):
     Source cells are never rewritten. Empty and unfamiliar verdicts remain
     ineligible; spreadsheet highlight colors do not participate in this rule.
     """
+    fields = display_source_fields(fields)
     outcome, verdict = _text(fields.get("Outcome")), _text(fields.get("QC_Verdict"))
-    normalized_outcome = re.sub(r"[\s_]+", "-", outcome.casefold())
-    normalized_verdict = re.sub(r"[\s_]+", "-", verdict.casefold())
+    normalized_outcome, normalized_verdict = _outcome_key(outcome), _outcome_key(verdict)
     swapped = outcome.casefold() in QC and normalized_verdict in OUTCOMES
     if swapped:
         outcome, verdict = verdict, outcome
@@ -116,6 +144,7 @@ def support_label(fields):
 
 def preview_row(fields):
     """Return normalized display facts plus the disclosed source-column interpretation."""
+    fields = display_source_fields(fields)
     qc, outcome, swapped = technical_qc(fields)
     label, support = nomenclature(fields), support_label(fields)
     return {
@@ -126,6 +155,7 @@ def preview_row(fields):
         "rawSupport": fields.get("Event_Support_Dedup_Percentage"),
         "outcome": outcome,
         "qc": qc,
+        "qcVerdict": _text(fields.get("QC_Verdict")),
         "columnsSwapped": swapped,
         "reportLabel": ", ".join(
             filter(None, [label, support + " read support" if support else "", outcome])
@@ -160,9 +190,8 @@ def read_post_qc_workbook(payload, filename, *, allowed_rna_ids):
                 "Unreadable or oversized XLSX workbook; select one worksheet with literal post-QC values"
             ) from error
     table["fileName"] = filename
-    if not REQUIRED_HEADERS <= set(table["headers"]) or len(set(table["headers"])) != len(
-        table["headers"]
-    ):
+    headers = [canonical_header(header) for header in table["headers"]]
+    if not REQUIRED_HEADERS <= set(headers) or len(set(headers)) != len(headers):
         raise PostQcProblem("Missing or duplicate post-QC column headers")
     if not table["rows"]:
         raise PostQcProblem(
@@ -171,7 +200,7 @@ def read_post_qc_workbook(payload, filename, *, allowed_rna_ids):
     table["tableId"] = "postqc-" + sha256((filename + table["sha256"]).encode()).hexdigest()[:24]
     previews, identities = [], set()
     for row in table["rows"]:
-        fields = dict(zip(table["headers"], row["values"]))
+        fields = dict(zip(headers, row["values"]))
         if sample_identity(fields) != match[1]:
             raise PostQcProblem(
                 "Workbook rows do not all belong to the exact RNA sample in the filename"

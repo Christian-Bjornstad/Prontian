@@ -31,10 +31,11 @@ def _exon_label(value):
 
 def rna_display_fields(fields):
     """Name only what the source declares; never infer an exon-skipping event."""
+    from pronto_report.adapters.post_qc_rna import display_source_fields, event_kind, preview_row
+
+    fields = display_source_fields(fields)
     result = dict(fields)
     first, second = _provided(fields.get("Gene_A")), _provided(fields.get("Gene_B"))
-    from pronto_report.adapters.post_qc_rna import event_kind, preview_row
-
     kind = event_kind(fields)
     fusion = kind == "Fusion"
     result["Gene_Label"] = f"{first}::{second}" if fusion and second and first != second else first
@@ -59,6 +60,7 @@ def rna_display_fields(fields):
     result["Report_Label"] = preview["reportLabel"]
     result["Outcome_Label"] = preview["outcome"]
     result["QC_Label"] = preview["qc"]
+    result["QC_Verdict_Label"] = preview["qcVerdict"]
     result["QC_Columns_Swapped"] = preview["columnsSwapped"]
     return result
 

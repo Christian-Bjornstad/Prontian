@@ -27,7 +27,7 @@ from .source_fields import (
     rna_display_fields,
 )
 
-TEMPLATE_VERSION = "2.2"
+TEMPLATE_VERSION = "2.3"
 BLUE = "#203b63"
 GREEN = "#14592c"
 OLIVE = "#708322"
@@ -410,8 +410,17 @@ def _cnv_table(model, width):
 
 
 def _rna_table(model, width):
+    from pronto_report.review.rna_qc import RNA_QC_REVIEW_LABELS
+
     return _table(
-        ["Fusion / splice variant", "Clinical class", "Transcripts", "Technical QC", "Review"],
+        [
+            "Fusion / splice variant",
+            "Clinical class",
+            "Transcripts",
+            "Technical QC",
+            "QC Verdict",
+            "Review",
+        ],
         [
             [
                 item["fields"].get("Report_Label"),
@@ -421,7 +430,8 @@ def _rna_table(model, width):
                     for key in ("Transcript_A", "Transcript_B", "Transcript_S")
                     if item["fields"].get(key) not in (None, "", ".", "N/A")
                 ),
-                item["fields"].get("QC_Label"),
+                RNA_QC_REVIEW_LABELS[item["review"].get("technicalQc", "NOT_REVIEWED")],
+                item["fields"].get("QC_Verdict_Label"),
                 item["review"].get("comment", ""),
             ]
             for item in model["rna"]

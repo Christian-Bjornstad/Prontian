@@ -19,12 +19,17 @@
    nytt utkast med versjonert kildegrunnlag åpnes. Andre funn og notater beholdes.
    Erstatter du fusjoner, krever disse ny vurdering; øvrige splice-funn beholdes.
 6. Slå på redigering og angi **Include/Exclude**, **Clinical class** (for
-   eksempel Oncogenic eller VUS), kommentar og eventuelt rapporthøydepunkt.
+   eksempel Oncogenic eller VUS), **Technical QC** (OK eller Reviewed),
+   kommentar og eventuelt rapporthøydepunkt.
    Lagre før eksport eller ferdigstilling.
 
 Teknisk PASS betyr at hendelsen er klar for faglig vurdering. Det setter ikke
 automatisk Oncogenic, VUS eller Include. FAIL, tom og ukjent teknisk QC kan
 inspiseres i kildetabellen, men kan ikke inkluderes som post-QC-rapportfunn.
+Den manuelle **Technical QC**-vurderingen lagres sammen med revisjonen og vises
+i detaljdelen av PDF-en. **QC Verdict** viser verdien fra Excel i tabellen og
+rapporten. Den manuelle vurderingen endrer verken kildeverdien eller hvilke
+post-QC-funn som kan inkluderes.
 
 ## Kolonner og rapporttekst
 
@@ -33,8 +38,8 @@ originale celler bevares og kan leses i **Full table**.
 
 | Kildekolonne | Bruk |
 | --- | --- |
-| `Gene_A`, `Exon_A` | Første partner og deklarert ekson |
-| `Gene_B`, `Exon_B` | Andre partner og deklarert ekson |
+| `Gene_A`, `Exon_A` (også `GenA`, `exonA`) | Første partner og deklarert ekson |
+| `Gene_B`, `Exon_B` (også `GenB`, `exonB`) | Andre partner og deklarert ekson |
 | `Event_Support_Dedup_Percentage` | Eksakt kildeverdi; avrundet prosent i rapporttekst |
 | `Outcome` | Biologisk konsekvens i standardoppsettet |
 | `QC_Verdict` | Teknisk PASS/OK/FAIL i standardoppsettet |
@@ -48,7 +53,7 @@ halvverdier oppover. Manglende eksoner eller konsekvenser blir ikke utledet.
 To oppsett støttes:
 
 - Standard: `Outcome=out-of-frame`, `QC_Verdict=PASS`.
-- Gjenkjent ombytting: `Outcome=OK`, `QC_Verdict=out of frame`.
+- Gjenkjent ombytting: `Outcome=OK`, `QC_Verdict=out of frame` eller `inframe`.
   Forhåndsvisningen merker dette eksplisitt. Råcellene omskrives ikke.
 
 Radfarge brukes ikke til å fastslå teknisk PASS eller klinisk betydning.
@@ -111,8 +116,9 @@ sequenceDiagram
 Figurene skaleres proporsjonalt uten beskjæring. Vedlegget kommer før eventuelle
 manuelt valgte presentasjonsfigurer. ESMO-PDF får ikke dette MOL-vedlegget.
 Kilden er den importerte, sjekksumkontrollerte `*_CNV_overview_plots.pdf` med
-ni sider. Manglende, konkurrerende eller andre sideoppsett gir en tydelig
-«CNV appendix unavailable»-side. En erklært kildefil som mangler i databasen
+ni sider. Ved annet sidetall vises hele oversikten i opprinnelig siderekkefølge
+med sidenummer, uten å tilordne panelnavn. Manglende eller konkurrerende oversikter
+gir en tydelig «CNV appendix unavailable»-side. En erklært kildefil som mangler i databasen
 eller har feil sjekksum stopper eksporten.
 
 ## Grenser og feilsøking

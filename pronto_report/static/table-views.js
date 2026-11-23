@@ -62,7 +62,7 @@
     exona: "Exon / intron A",
     exonb: "Exon / intron B",
     eventsupportdeduppercentage: "Read support (%)",
-    qcverdict: "Source QC",
+    qcverdict: "QC Verdict",
   };
   function enhance(table) {
     if (table.hasAttribute("data-fixed-columns")) return;
