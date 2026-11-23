@@ -92,16 +92,16 @@ def record_and_render(record, actor, data, request_id, initials):
         plot_images = {}
         if data["layout"] == "PRESENTATION":
             from pronto_report.renderers.assets import load_plot_images_from_bytes
-            from pronto_report.renderers.cnv_appendix import overview_assets
+            from pronto_report.renderers.cnv_appendix import cnv_appendix_assets
 
-            overview = replace(report, attachments=overview_assets(report))
+            cnv_report = replace(report, attachments=cnv_appendix_assets(report))
             blobs = {
                 asset.asset_id: bytes(asset.content)
                 for asset in locked.assets.filter(
-                    asset_id__in=[item["assetId"] for item in overview.attachments]
+                    asset_id__in=[item["assetId"] for item in cnv_report.attachments]
                 )
             }
-            plot_images = load_plot_images_from_bytes(overview, blobs)
+            plot_images = load_plot_images_from_bytes(cnv_report, blobs)
             ids = [item["figureId"] for item in review.presentation_figures]
             for figure in PresentationFigure.objects.filter(report=locked, pk__in=ids):
                 payload = bytes(figure.content)

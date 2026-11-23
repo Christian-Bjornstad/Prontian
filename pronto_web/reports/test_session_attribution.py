@@ -56,13 +56,19 @@ class SessionAttributionTests(TestCase):
         from pronto.tests.reporting.test_pronto_output_adapter import FIXTURE_ROOT
         from pronto_web.reports.models import ReportAsset
 
-        for asset in self.report.attachments:
-            if str(asset["name"]).endswith("_CNV_overview_plots.pdf"):
-                ReportAsset.objects.create(
-                    report=self.record,
-                    asset_id=asset["assetId"],
-                    content=(FIXTURE_ROOT / asset["name"]).read_bytes(),
-                )
+        source = self.record.report_data
+        asset = next(
+            item
+            for item in source["attachments"]
+            if item["name"].endswith("_CNV_overview_plots.pdf")
+        )
+        ReportAsset.objects.create(
+            report=self.record,
+            asset_id=asset["assetId"],
+            content=(FIXTURE_ROOT / asset["name"]).read_bytes(),
+        )
+        asset.update(name="alternate-overview.pdf", description="CNV")
+        self.record.save(update_fields=["report_data"])
         self.client.force_login(self.writer)
         for layout in ("ESMO", "PRESENTATION"):
             command = {
@@ -83,6 +89,7 @@ class SessionAttributionTests(TestCase):
                 page.extract_text() for page in PdfReader(BytesIO(response.content)).pages
             )
             assert self.writer.username in text
+            assert ("alternate-overview.pdf" in text) == (layout == "PRESENTATION")
             event = ReportPdfExportAudit.objects.get(request_id=command["requestId"])
             assert event.actor_id == self.writer.pk and event.actor_label == self.writer.username
             assert event.declared_initials is None and event.attribution_method == "AUTHENTICATED"
