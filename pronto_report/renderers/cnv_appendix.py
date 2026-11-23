@@ -1,60 +1,72 @@
-"""Append documented MOL panels or preserve an alternate overview in source order."""
+"""Build the MOL appendix from declared CNV assets and source page numbers."""
 
 from io import BytesIO
 
 from reportlab.platypus import Image, PageBreak, Spacer
 
 
-def overview_assets(report):
-    """Select only the declared standard overview, excluding Cancan/other plots."""
+def _standard_overview(asset):
+    """Identify the documented overview family used for the page 2/4/5 preset."""
+    return asset["mediaType"] == "application/pdf" and str(asset["name"]).casefold().endswith(
+        "_cnv_overview_plots.pdf"
+    )
+
+
+def cnv_appendix_assets(report):
+    """Use the imported CNV role, with the standard filename as a legacy fallback."""
     return tuple(
         asset
         for asset in report.attachments
-        if str(asset["name"]).casefold().endswith("_cnv_overview_plots.pdf")
-        and asset["mediaType"] == "application/pdf"
+        if asset["mediaType"] in {"application/pdf", "image/png", "image/jpeg"}
+        and (
+            _standard_overview(asset)
+            or str(asset.get("description", "")).strip().casefold() == "cnv"
+        )
     )
 
 
 def appendix_story(report, plot_images, width, height):
-    """Fit A2 on one page, then B3/C1 vertically on the next without cropping.
+    """Fit the standard pages by position; label every plot by its source.
 
     Input images must already have passed the declared-asset hash check. An
-    alternate page count is shown in source order. Ambiguous assets are never
-    selected automatically.
+    alternate or multiple CNV sources are shown in full in source order.
     """
     from .report_pdf import _heading, _paragraph
 
-    assets = overview_assets(report)
-    pages = plot_images.get(str(assets[0]["assetId"]), ()) if len(assets) == 1 else ()
-    if not pages:
-        reason = (
-            "No standard CNV overview PDF was imported."
-            if not assets
-            else "No unique CNV overview with available pages was found."
-        )
-        return [PageBreak(), _heading("CNV appendix unavailable"), _paragraph(reason)]
-
-    def panel(index, label, available_height):
-        image = Image(BytesIO(pages[index][1]))
-        image._restrictSize(width - 8, available_height - 30)
-        image.hAlign = "CENTER"
-        return [_heading(label), image]
-
-    if len(pages) != 9:
+    sources = [
+        (asset, plot_images[str(asset["assetId"])])
+        for asset in cnv_appendix_assets(report)
+        if plot_images.get(str(asset["assetId"]))
+    ]
+    if not sources:
         return [
-            flow
-            for index in range(len(pages))
-            for flow in [
-                PageBreak(),
-                *panel(index, f"CNV overview — source page {index + 1}", height - 8),
-            ]
+            PageBreak(),
+            _heading("CNV appendix unavailable"),
+            _paragraph("No imported CNV plot pages are available."),
+        ]
+
+    def panel(asset, pages, index, available_height):
+        heading = _heading(f"{asset['name']} — source page {index + 1}")
+        _, heading_height = heading.wrap(width - 12, available_height)
+        image = Image(BytesIO(pages[index][1]))
+        image._restrictSize(width - 12, available_height - heading_height - 16)
+        image.hAlign = "CENTER"
+        return [heading, image]
+
+    asset, pages = sources[0]
+    if len(sources) == 1 and _standard_overview(asset) and len(pages) == 9:
+        return [
+            PageBreak(),
+            *panel(asset, pages, 1, height - 8),
+            PageBreak(),
+            *panel(asset, pages, 3, (height - 14) / 2),
+            Spacer(1, 8),
+            *panel(asset, pages, 4, (height - 14) / 2),
         ]
 
     return [
-        PageBreak(),
-        *panel(1, "CNV A2 — source page 2", height - 8),
-        PageBreak(),
-        *panel(3, "CNV B3 — source page 4", (height - 14) / 2),
-        Spacer(1, 8),
-        *panel(4, "CNV C1 — source page 5", (height - 14) / 2),
+        flow
+        for asset, pages in sources
+        for index in range(len(pages))
+        for flow in [PageBreak(), *panel(asset, pages, index, height - 8)]
     ]

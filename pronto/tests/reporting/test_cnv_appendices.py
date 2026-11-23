@@ -3,6 +3,7 @@
 import json
 from io import BytesIO
 
+import pytest
 from PIL import Image
 from pypdf import PdfReader
 
@@ -37,7 +38,7 @@ def panels(count=9):
     return {"cnv-overview": tuple(pages)}
 
 
-def test_mol_appends_a2_alone_then_b3_c1_together():
+def test_mol_appends_source_page_two_alone_then_four_and_five_together():
     report = overview_report()
     pdf = PdfReader(
         BytesIO(
@@ -51,8 +52,11 @@ def test_mol_appends_a2_alone_then_b3_c1_together():
         )
     )
     first, second = pdf.pages[-2:]
-    assert "CNV A2" in first.extract_text()
-    assert "CNV B3" in second.extract_text() and "CNV C1" in second.extract_text()
+    assert "source page 2" in first.extract_text()
+    assert "source page 4" in second.extract_text() and "source page 5" in second.extract_text()
+    assert all(
+        label not in first.extract_text() + second.extract_text() for label in ("A2", "B3", "C1")
+    )
     assert len(first.images) == 1 and len(second.images) == 2
     assert first.images[0].image.getpixel((20, 20))[:3] == (255, 0, 0)
     assert {image.image.getpixel((20, 20))[:3] for image in second.images} == {
@@ -74,11 +78,21 @@ def test_esmo_does_not_include_the_mol_appendix():
             )
         )
     )
-    assert "CNV A2" not in "".join(page.extract_text() for page in pdf.pages)
+    assert not any(page.images for page in pdf.pages)
 
 
-def test_single_page_overview_is_included_without_guessing_panel_names():
-    report = overview_report()
+@pytest.mark.parametrize(
+    ("name", "media_type", "count"),
+    [
+        ("SYN_CNV_overview_plots.pdf", "application/pdf", 1),
+        ("alternative-layout.pdf", "application/pdf", 9),
+        ("overview-image.png", "image/png", 1),
+    ],
+)
+def test_alternate_sources_keep_all_pages_in_original_order(name, media_type, count):
+    document = json.loads(serialize_report_data(overview_report()))
+    document["attachments"][0].update(name=name, mediaType=media_type)
+    report = validate_report_data(document)
     pdf = PdfReader(
         BytesIO(
             render_report_pdf(
@@ -86,10 +100,41 @@ def test_single_page_overview_is_included_without_guessing_panel_names():
                 draft_review(report),
                 layout="PRESENTATION",
                 export_initials="AB",
-                plot_images=panels(1),
+                plot_images=panels(count),
             )
         )
     )
-    assert "CNV overview" in pdf.pages[-1].extract_text()
-    assert "CNV A2" not in pdf.pages[-1].extract_text()
-    assert len(pdf.pages[-1].images) == 1
+    for index, page in enumerate(pdf.pages[-count:], start=1):
+        text = page.extract_text()
+        assert name in text and f"source page {index}" in text
+        assert len(page.images) == 1
+
+
+def test_multiple_cnv_sources_keep_their_names_and_exclude_other_plots():
+    document = json.loads(serialize_report_data(overview_report()))
+    original = document["attachments"][0]
+    document["attachments"].extend(
+        [
+            dict(original, assetId="second-cnv", name="other-layout.pdf"),
+            dict(original, assetId="qc", name="sample-qc.pdf", description="QC"),
+        ]
+    )
+    report = validate_report_data(document)
+    images = panels(2)
+    images.update({"second-cnv": panels(1)["cnv-overview"], "qc": panels(1)["cnv-overview"]})
+    pdf = PdfReader(
+        BytesIO(
+            render_report_pdf(
+                report,
+                draft_review(report),
+                layout="PRESENTATION",
+                export_initials="AB",
+                plot_images=images,
+            )
+        )
+    )
+    texts = [page.extract_text() for page in pdf.pages]
+    assert "SYN_CNV_overview_plots.pdf — source page 1" in texts[-3]
+    assert "SYN_CNV_overview_plots.pdf — source page 2" in texts[-2]
+    assert "other-layout.pdf — source page 1" in texts[-1]
+    assert all("sample-qc.pdf" not in text for text in texts)

@@ -110,16 +110,18 @@ sequenceDiagram
 
 **Presentation PDF** er MOL-rapporten i landskapsformat. Standardvedlegget er:
 
-1. **A2**, side 2 i standardoversikten, på egen side.
-2. **B3** fra side 4 øverst og **C1** fra side 5 nederst på neste side.
+1. **Kildeside 2** på egen side.
+2. **Kildeside 4 og 5** sammen på neste side.
 
 Figurene skaleres proporsjonalt uten beskjæring. Vedlegget kommer før eventuelle
 manuelt valgte presentasjonsfigurer. ESMO-PDF får ikke dette MOL-vedlegget.
-Kilden er den importerte, sjekksumkontrollerte `*_CNV_overview_plots.pdf` med
-ni sider. Ved annet sidetall vises hele oversikten i opprinnelig siderekkefølge
-med sidenummer, uten å tilordne panelnavn. Manglende eller konkurrerende oversikter
-gir en tydelig «CNV appendix unavailable»-side. En erklært kildefil som mangler i databasen
-eller har feil sjekksum stopper eksporten.
+Dette sidevalget gjelder én importert, sjekksumkontrollert
+`*_CNV_overview_plots.pdf` med ni sider. Vedlegget bruker kildefilnavn og
+sidenummer, siden navn som A2, B3 og C1 varierer. Andre importerte PDF- og
+bildefiler klassifisert som CNV vises i sin helhet i opprinnelig rekkefølge.
+Det samme gjelder hvis rapporten har flere CNV-kilder. Uten tilgjengelige
+CNV-plott viser rapporten «CNV appendix unavailable». En erklært kildefil som
+mangler i databasen eller har feil sjekksum stopper eksporten.
 
 ## Grenser og feilsøking
 
