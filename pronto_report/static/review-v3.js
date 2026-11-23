@@ -118,6 +118,8 @@ window.initReviewV3 = function (api) {
       const classification = row.querySelector("[data-rna-class]");
       if (classification)
         classification.value = item.clinicalClassification || "UNCLASSIFIED";
+      const technicalQc = row.querySelector("[data-rna-technical-qc]");
+      if (technicalQc) technicalQc.value = item.technicalQc || "NOT_REVIEWED";
       row.classList.toggle(
         "excluded-row",
         item.reportingDecision === "EXCLUDE",

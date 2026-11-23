@@ -13,6 +13,14 @@
 
 ## Unreleased — post-QC RNA and MOL CNV appendices
 
+- Recognize compact post-QC verdicts such as `inframe` in reversed workbooks
+  and accept alternate partner/exon column spellings. Show the Excel verdict
+  alongside the exon-aware nomenclature in review and exports.
+- Save per-finding Technical QC as an independent RNA review choice. Keep
+  post-QC report inclusion tied to the source assessment.
+- Attach nonstandard CNV overviews in source order when the standard nine-page
+  panel mapping does not apply.
+
 - Select late fusion/splice XLSX files directly from RNA review, preview exact
   sample linkage, technical QC and standard/reversed QC column interpretation,
   then confirm the same files against the current draft.

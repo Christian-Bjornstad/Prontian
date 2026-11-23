@@ -77,7 +77,7 @@ def test_esmo_does_not_include_the_mol_appendix():
     assert "CNV A2" not in "".join(page.extract_text() for page in pdf.pages)
 
 
-def test_unknown_overview_layout_is_disclosed_without_guessing_panels():
+def test_single_page_overview_is_included_without_guessing_panel_names():
     report = overview_report()
     pdf = PdfReader(
         BytesIO(
@@ -86,9 +86,10 @@ def test_unknown_overview_layout_is_disclosed_without_guessing_panels():
                 draft_review(report),
                 layout="PRESENTATION",
                 export_initials="AB",
-                plot_images=panels(8),
+                plot_images=panels(1),
             )
         )
     )
-    assert "CNV appendix unavailable" in pdf.pages[-1].extract_text()
-    assert not pdf.pages[-1].images
+    assert "CNV overview" in pdf.pages[-1].extract_text()
+    assert "CNV A2" not in pdf.pages[-1].extract_text()
+    assert len(pdf.pages[-1].images) == 1

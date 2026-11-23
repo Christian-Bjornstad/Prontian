@@ -2,7 +2,9 @@
 
 from html import escape
 
+from pronto_report.adapters.post_qc_rna import canonical_header
 from pronto_report.review.gene_registry import gene_markup
+from pronto_report.review.rna_qc import RNA_QC_REVIEW_LABELS
 
 from .review_v3 import checkbox, shown
 from .source_fields import cnv_display_fields, rna_display_fields
@@ -61,15 +63,14 @@ def cnv_row(table, row, activities, readonly, manual=False):
             + "</select></td>"
         )
         cells += f'<td><input data-v4-edit data-rna-comment aria-label="RNA review {escape(identifier)}" maxlength="10000" value="{escape(activity.get("comment", ""), quote=True)}"{disabled}></td>'
+        qc_review = activity.get("technicalQc", "NOT_REVIEWED")
         cells += (
-            '<td class="source-data">'
-            + shown(fields["QC_Label"])
-            + (
-                ' <span title="Source Outcome contains QC and QC_Verdict contains the biological consequence">(swapped)</span>'
-                if fields["QC_Columns_Swapped"]
-                else ""
+            f'<td><select data-v4-edit data-rna-technical-qc aria-label="RNA technical QC {escape(identifier)}"{disabled}>'
+            + "".join(
+                f'<option value="{value}"{" selected" if value == qc_review else ""}>{label}</option>'
+                for value, label in RNA_QC_REVIEW_LABELS.items()
             )
-            + "</td>"
+            + "</select></td>"
         )
     headers = ordered_headers(table)
     for header in headers:
@@ -117,8 +118,8 @@ def cnv_row(table, row, activities, readonly, manual=False):
     return (
         f'<tr data-source-id="{identifier}" data-source-kind="{table["kind"]}" data-source-search="{escape(search, quote=True)}" data-source-label="{escape(label, quote=True)}" class="{classes}"'
         + (
-            f' data-post-qc="{str(bool(row.get("sourceApproved"))).lower()}"'
-            if table["tableId"].startswith("postqc-")
+            f' data-post-qc="{str(fields["QC_Label"] == "PASS").lower()}"'
+            if table["kind"] == "RNA" and table["tableId"].startswith("postqc-")
             else ""
         )
         + (" data-manual-cnv" if manual else "")
@@ -138,8 +139,10 @@ def ordered_headers(table):
         ]
         headers = ["Gene_Symbol", "Chromosome", "Cytoband", "Tumor_CN", "Tumor_FC", *headers]
     elif table["kind"] == "RNA":
+        headers = list(dict.fromkeys(canonical_header(header) for header in headers))
         front = [
             "Nomenclature",
+            "QC_Verdict",
             "Gene_A",
             "Gene_B",
             "Provisional_Event_Type",
@@ -148,9 +151,8 @@ def ordered_headers(table):
             "Exon_B",
             "Event_Support_Dedup_Percentage",
             "Outcome",
-            "QC_Verdict",
         ]
-        headers = [h for h in front if h in headers or h == "Nomenclature"] + [
+        headers = [h for h in front if h in headers or h in {"Nomenclature", "QC_Verdict"}] + [
             h for h in headers if h not in front
         ]
     return headers
@@ -217,7 +219,9 @@ def source_tables(report, review, kind, readonly):
             )
             + f'<div class="table-toolbar">{toolbar}<label>Search all source columns <input type="search" data-source-search-for="{identifier}"></label></div>'
             f'<div class="table-scroll" role="region" aria-label="Full {kind} source table" tabindex="0"><table class="full-source-table" id="{identifier}"><thead><tr>'
-            + "".join("<th>" + shown(h) + "</th>" for h in headings)
+            + "".join(
+                "<th>" + shown("QC Verdict" if h == "QC_Verdict" else h) + "</th>" for h in headings
+            )
             + "</tr></thead><tbody>"
             + rows
             + "</tbody></table></div></section>"

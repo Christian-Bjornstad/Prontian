@@ -26,12 +26,12 @@ HEADERS = [
 ]
 
 
-def workbook(*rows):
+def workbook(*rows, headers=HEADERS):
     book = Workbook()
     sheet = book.active
     sheet.title = "Candidates"
     sheet.append(["# Synthetic source, no patient data"])
-    sheet.append(HEADERS)
+    sheet.append(headers)
     for values in rows or [row()]:
         sheet.append(values)
     # Color intentionally contradicts QC: it must never authorize a failed row.
@@ -82,6 +82,21 @@ def test_standard_and_reversed_columns_have_same_preview_but_keep_raw_cells():
     assert standard[1][0]["columnsSwapped"] is False
     assert reversed_[1][0]["columnsSwapped"] is True
     assert reversed_[0]["rows"][0]["values"][HEADERS.index("Outcome")] == "OK"
+
+
+def test_compact_verdict_and_excel_exon_headers_preserve_source_values():
+    aliases = {"Gene_A": "GenA", "Gene_B": "GenB", "Exon_A": "exonA", "Exon_B": "exonB"}
+    headers = [aliases.get(header, header) for header in HEADERS]
+    table, (preview,) = read_post_qc_workbook(
+        workbook(row(Outcome="OK", QC_Verdict="inframe"), headers=headers),
+        NAME,
+        allowed_rna_ids={RNA},
+    )
+    assert table["headers"] == headers
+    assert table["rows"][0]["sourceApproved"]
+    assert preview["label"] == "AKT3 (exon 1)::CEP112 (exon 17)"
+    assert preview["qcVerdict"] == "inframe"
+    assert preview["outcome"] == "in-frame"
 
 
 def test_color_does_not_make_a_fail_or_unreviewed_event_pass():

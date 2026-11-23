@@ -4,6 +4,8 @@ from pronto_report.adapters.post_qc_rna import technical_qc
 
 from .contracts import ReviewCommandError
 
+RNA_QC_REVIEW_LABELS = {"NOT_REVIEWED": "Not reviewed", "OK": "OK", "REVIEWED": "Reviewed"}
+
 
 def validate_rna_review(report, review):
     """Clinical labels belong to RNA findings; post-QC INCLUDE requires explicit PASS.
@@ -23,9 +25,11 @@ def validate_rna_review(report, review):
             ):
                 ineligible.add(row["findingId"])
     for item in review.finding_reviews:
-        if "clinicalClassification" in item and item["findingId"] not in rna_ids:
+        if {"clinicalClassification", "technicalQc"} & item.keys() and item[
+            "findingId"
+        ] not in rna_ids:
             raise ReviewCommandError(
-                "INVALID_DRAFT", "RNA clinical class requires an RNA finding", 422
+                "INVALID_DRAFT", "RNA review annotations require an RNA finding", 422
             )
         if item["findingId"] in ineligible and item["reportingDecision"] == "INCLUDE":
             raise ReviewCommandError(

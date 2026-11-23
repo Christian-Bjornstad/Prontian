@@ -183,20 +183,21 @@ def top_tables(model):
         proportions=[0.32, 0.33, 0.35],
     )
     rna = _table(
-        ["Fusion / splice variant", "Clinical class", "Review"],
+        ["Fusion / splice variant", "QC Verdict", "Clinical class", "Review"],
         [
             [
                 item["review"].get("presentation", {}).get("alteration")
                 or item["fields"].get("Report_Label"),
+                item["fields"].get("QC_Verdict_Label"),
                 clinical_class_label(item["review"].get("clinicalClassification")),
                 item["review"].get("comment", "—"),
             ]
             for item in model["rna"]
         ]
-        or [["—"] * 3],
+        or [["—"] * 4],
         245,
         size=7.2,
-        proportions=[0.60, 0.25, 0.15],
+        proportions=[0.47, 0.17, 0.20, 0.16],
     )
     return [
         (

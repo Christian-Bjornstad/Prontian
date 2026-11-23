@@ -119,7 +119,9 @@ class PostQcUploadTests(TestCase):
         working = WorkingDraft.objects.get(report=self.record)
         draft = working.review_data
         item = next(i for i in draft["findingReviews"] if i["findingId"].startswith("rna-"))
-        item.update(reportingDecision="INCLUDE", clinicalClassification="ONCOGENIC")
+        item.update(
+            reportingDecision="INCLUDE", clinicalClassification="ONCOGENIC", technicalQc="OK"
+        )
         command = {
             "schemaVersion": "2.0",
             "reportId": self.record.pk,
@@ -148,13 +150,26 @@ class PostQcUploadTests(TestCase):
 
         from pypdf import PdfReader
 
-        from pronto_web.reports.models import WorkingDraft
+        from pronto.tests.reporting.test_pronto_output_adapter import FIXTURE_ROOT
+        from pronto_web.reports.models import ReportAsset, WorkingDraft
 
-        assert self.apply_first().status_code == 201
+        for asset in self.report.attachments:
+            if str(asset["name"]).endswith("_CNV_overview_plots.pdf"):
+                ReportAsset.objects.create(
+                    report=self.record,
+                    asset_id=asset["assetId"],
+                    content=(FIXTURE_ROOT / asset["name"]).read_bytes(),
+                )
+
+        assert (
+            self.apply_first(workbook(row(Outcome="OK", QC_Verdict="inframe"))).status_code == 201
+        )
         working = WorkingDraft.objects.get(report=self.record)
         draft = working.review_data
         item = next(i for i in draft["findingReviews"] if i["findingId"].startswith("rna-"))
-        item.update(reportingDecision="INCLUDE", clinicalClassification="ONCOGENIC")
+        item.update(
+            reportingDecision="INCLUDE", clinicalClassification="ONCOGENIC", technicalQc="REVIEWED"
+        )
         saved = self.client.post(
             f"/reports/{self.record.pk}/working/",
             json.dumps(
@@ -178,16 +193,20 @@ class PostQcUploadTests(TestCase):
                     "reportId": self.record.pk,
                     "revision": working.revision,
                     "workingVersion": saved.json()["workingVersion"],
-                    "layout": "ESMO",
+                    "layout": "PRESENTATION",
                     "requestId": str(uuid4()),
                 }
             ),
             content_type="application/json",
         )
         assert exported.status_code == 200
-        text = " ".join(page.extract_text() for page in PdfReader(BytesIO(exported.content)).pages)
+        pages = PdfReader(BytesIO(exported.content)).pages
+        headline = " ".join(pages[0].extract_text().split())
+        assert "QC Verdict" in headline and "inframe" in headline and "exon 17" in headline
+        text = " ".join(page.extract_text() for page in pages)
         text = " ".join(text.split())
         assert "Oncogenic" in text and "13% read support" in text and "exon 17" in text
+        assert "Reviewed" in text and "Technical QC" in text
 
     def test_reopen_original_revision_restores_its_source_pair(self):
         from pronto_web.reports.models import WorkingDraft

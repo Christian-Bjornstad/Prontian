@@ -518,6 +518,7 @@
           "minimum": 0,
           "maximum": 1000000000
         },
+        "technicalQc": {"enum": ["NOT_REVIEWED", "OK", "REVIEWED"]},
         "clinicalClassification": {
           "enum": [
             "UNCLASSIFIED",
