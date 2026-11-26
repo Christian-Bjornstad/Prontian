@@ -78,6 +78,44 @@ def selected_plan(roots, **options):
     return set_report_selected(plan, plan.reports[0].key, True)
 
 
+def test_header_only_metadata_explains_why_a_known_run_is_blocked(actual_sources):
+    source = actual_sources["raw"] / "InPreD_PRONTO_metadata_tsoppi.txt"
+    write(source, "# Synthetic TSOPPI template\n" + source.read_text().splitlines()[0] + "\n")
+
+    plan = discover_folders(tuple(actual_sources.values()))
+
+    assert plan.run_ids == (RUN,)
+    assert not plan.reports
+    assert any("ingen datarader" in warning for warning in plan.warnings)
+
+
+@pytest.mark.django_db
+def test_explicit_run_metadata_recovers_empty_raw_template(
+    actual_sources, tmp_path, django_user_model
+):
+    source = actual_sources["raw"] / "InPreD_PRONTO_metadata_tsoppi.txt"
+    header, _, dna, rna = source.read_text().splitlines()
+    write(source, header + "\n")
+    provided = write(tmp_path / "approved" / "metadata.tsv", "\n".join([header, dna, rna]) + "\n")
+    plan = selected_plan(actual_sources, metadata_file=provided)
+
+    assert plan.profile == "tsoppi-run-v1"
+    assert plan.run_ids == (RUN,)
+    assert plan.reports[0].files["metadata"] == (provided,)
+    assert plan.reports[0].report_version == "new"
+    actor = django_user_model.objects.create_user(username="reviewer")
+    result = import_plan(plan, actor, tmp_path / "archive")
+    assert result.items[0].status == "imported", result.items[0].message
+    assert source.read_text() == header + "\n"
+
+
+def test_explicit_metadata_rejects_other_run_rows(actual_sources, tmp_path):
+    source = actual_sources["raw"] / "InPreD_PRONTO_metadata_tsoppi.txt"
+    provided = write(tmp_path / "approved" / "metadata.tsv", source.read_text())
+    with pytest.raises(ValueError, match="bare inneholde rader for"):
+        discover_folders(tuple(actual_sources.values()), metadata_file=provided)
+
+
 @pytest.mark.django_db
 def test_import_by_team_member_grants_other_active_team_members(
     actual_sources, tmp_path, django_user_model

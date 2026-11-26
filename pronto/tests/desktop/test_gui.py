@@ -294,6 +294,31 @@ def test_scan_and_failure_preserve_review_plan(window, plan, qtbot, monkeypatch)
     assert "Syntetisk lesefeil" in window.plan_summary.text()
 
 
+def test_choose_and_clear_run_metadata(window, plan, qtbot, monkeypatch, tmp_path):
+    from PyQt6.QtWidgets import QFileDialog
+
+    import pronto_ingest.discovery as discovery
+
+    path = str(tmp_path / "metadata.tsv")
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *_: (path, ""))
+    window.folder_fields[0].setText(str(plan.folders[0]))
+    window.metadata_file_button.click()
+    assert window.metadata_file.text() == path
+    seen = []
+
+    def discover(*args, **options):
+        seen.append(options["metadata_file"])
+        return plan
+
+    monkeypatch.setattr(discovery, "discover_folders", discover)
+    window.start_scan()
+    qtbot.waitUntil(lambda: window._worker is None)
+    assert seen == [path] and window.plan == plan
+    window.clear_metadata_button.click()
+    assert not window.metadata_file.text() and window.plan is None
+    assert not window.import_button.isEnabled()
+
+
 def test_parent_folder_and_explicit_source_options_run_in_worker(window, plan, qtbot, monkeypatch):
     import pronto_ingest.discovery as discovery
 

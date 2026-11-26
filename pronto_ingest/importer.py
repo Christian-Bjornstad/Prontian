@@ -22,7 +22,14 @@ from .contracts import (
     ImportResult,
     check_cancel,
 )
-from .discovery import IDENTIFIER, MAX_BYTES, SAMPLE_COLUMNS, regular_file, table_rows
+from .discovery import (
+    IDENTIFIER,
+    MAX_BYTES,
+    SAMPLE_COLUMNS,
+    read_run_metadata,
+    regular_file,
+    table_rows,
+)
 from .linkage import resolve_links
 from .naming import classify_run_directory, declared_file_sample, file_matches, summary_run_id
 
@@ -554,13 +561,24 @@ def _import_one(plan, report_plan, actor, raw_root, batch, progress, cancel):
         for role, paths in report_plan.files.items():
             for source in paths:
                 source = Path(source).absolute()
-                if not regular_file(source) or not any(
-                    source.resolve(strict=True).is_relative_to(folder.resolve(strict=True))
-                    for folder in plan.folders
+                signature = plan.source_signatures.get(source)
+                explicit_metadata = (
+                    role == "metadata"
+                    and report_plan.profile == "tsoppi-run-v1"
+                    and plan.run_ids == (report_plan.run_id,)
+                    and source == plan.metadata_file
+                    and signature is not None
+                )
+                if not regular_file(source) or not (
+                    explicit_metadata
+                    or any(
+                        source.resolve(strict=True).is_relative_to(folder.resolve(strict=True))
+                        for folder in plan.folders
+                    )
                 ):
                     raise ImportProblem("En kilde ligger utenfor de valgte mappene.")
-                _validate_run_scope(source, role, report_plan)
-                signature = plan.source_signatures.get(source)
+                if not explicit_metadata:
+                    _validate_run_scope(source, role, report_plan)
                 info = source.stat()
                 if signature and signature != (info.st_size, info.st_mtime_ns):
                     raise ImportProblem(
@@ -580,6 +598,8 @@ def _import_one(plan, report_plan, actor, raw_root, batch, progress, cancel):
                 _filename_identity(source, role, report_plan, linked)
                 target = archive / f"{role}-{index}{source.suffix.lower()}"
                 hashes[target] = _copy(source, target, cancel)
+                if role == "metadata" and source == plan.metadata_file:
+                    read_run_metadata(target, report_plan.run_id)
                 original_names[target] = source.name
                 sources[role] = (*sources.get(role, ()), target)
         if report_plan.study_id_override:
