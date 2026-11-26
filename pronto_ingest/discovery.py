@@ -77,6 +77,22 @@ def table_rows(path, *, header=None, checked_parents=None):
     return rows
 
 
+def read_run_metadata(path, run, *, checked_parents=None):
+    """Validate an explicitly chosen metadata export before planning or importing."""
+    if path.suffix.lower() not in {".txt", ".tsv", ".csv"}:
+        raise ValueError("Velg en metadatafil i TXT-, TSV- eller CSV-format.")
+    rows = table_rows(path, checked_parents=checked_parents)
+    if not rows:
+        raise ValueError("Metadatafilen inneholder ingen datarader. Velg en utfylt fil.")
+    if not {"Sample_id", "Sequencing_run_id", "Study_id"} <= rows[0].keys():
+        raise ValueError("Metadatafilen må ha kolonnene Sample_id, Sequencing_run_id og Study_id.")
+    if any(row["Sequencing_run_id"] != run for row in rows):
+        raise ValueError("Den valgte metadatafilen kan bare inneholde rader for valgt kjøring.")
+    if any(not IDENTIFIER.fullmatch(row["Sample_id"]) for row in rows):
+        raise ValueError("Metadatafilen inneholder ugyldig eller tom prøve-ID.")
+    return rows
+
+
 def _headers(path):
     if path.stat().st_size > MAX_BYTES:
         return set()
@@ -199,6 +215,7 @@ def discover_folders(
     report_version="auto",
     cnv_source="merged",
     cnv_solution="main",
+    metadata_file=None,
 ) -> DiscoveryPlan:
     """Inspect 1–5 roots and return exact, bounded source choices without writes.
 
@@ -206,6 +223,7 @@ def discover_folders(
     Progress receives safe status text, and cancel is polled during traversal.
     Invalid roots/options raise ValueError. Ambiguous sources remain blocked in
     the returned plan so a reviewer can choose among discovered candidates.
+    An explicit metadata file applies to exactly one recognised raw run.
     All reader/ancestor caches are discarded when this call returns.
     """
     if (
@@ -299,9 +317,10 @@ def discover_folders(
                     # A single corrupt candidate must not discard the rest of
                     # a run. Third-party workbook/XML parsers use varied errors.
                     unreadable_count += 1
+    raw_runs = {run: roots for run, roots in locations.items() if roots.get("raw")}
     actual_runs = {
         run: roots
-        for run, roots in locations.items()
+        for run, roots in raw_runs.items()
         if any(
             candidate.role == "metadata"
             and candidate.path.parent in roots.get("raw", ())
@@ -311,6 +330,20 @@ def discover_folders(
             for candidate in candidates
         )
     }
+    if metadata_file is not None:
+        if len(raw_runs) != 1 or len(next(iter(raw_runs.values()))["raw"]) != 1:
+            raise ValueError("For egen metadatafil, velg råmappen for nøyaktig én kjøring.")
+        run = next(iter(raw_runs))
+        metadata_file = Path(metadata_file).absolute()
+        boundary = nearest_run_directory(metadata_file)
+        if boundary and boundary[1] != run:
+            raise ValueError("Metadatafilen ligger i en annen kjøringsmappe.")
+        rows = read_run_metadata(metadata_file, run, checked_parents=checked_parents)
+        metadata_file = metadata_file.resolve(strict=True)
+        candidates = [candidate for candidate in candidates if candidate.path != metadata_file]
+        candidates.append(SourceCandidate(metadata_file, "metadata"))
+        row_cache[metadata_file] = rows
+        actual_runs = raw_runs
     if actual_runs:
         return _actual_plan(
             folders,
@@ -327,6 +360,7 @@ def discover_folders(
             unreadable_count,
             omitted_count,
             checked_parents,
+            metadata_file=metadata_file,
         )
     dna_ids, rna_ids = set(), set()
     for candidate in (c for c in candidates if c.role == "sample_list"):
@@ -445,7 +479,17 @@ def discover_folders(
         )
         assigned.update(p for paths in files.values() for p in paths)
     if not reports:
-        warnings.append("Fant ingen gyldige prøve- og kjøringsidentiteter i metadata.")
+        if any(
+            c.role == "metadata" and c.path in row_cache and not row_cache[c.path]
+            for c in candidates
+        ):
+            warnings.insert(
+                0,
+                "Metadatafilen inneholder ingen datarader. Velg en utfylt fil for samme "
+                "kjøring under Avansert og kontroller filene på nytt.",
+            )
+        else:
+            warnings.append("Fant ingen gyldige prøve- og kjøringsidentiteter i metadata.")
     if unknown_count:
         warnings.append(
             f"{unknown_count} filer har ukjent eller ustøttet type; de første 200 vises uten tilordning."
@@ -469,6 +513,7 @@ def discover_folders(
         tuple(c for c in candidates if c.path not in assigned),
         tuple(dict.fromkeys(warnings)),
         signatures,
+        run_ids=tuple(sorted(raw_runs)) if not reports else (),
     )
 
 
@@ -530,6 +575,8 @@ def _actual_plan(
     unreadable_count,
     omitted_count,
     checked_parents,
+    *,
+    metadata_file=None,
 ):
     from .linkage import resolve_links
 
@@ -573,7 +620,11 @@ def _actual_plan(
             if report_version == "auto"
             else report_version
         )
-        metadata = [c.path for c in by_role["metadata"] if c.path.parent in roots.get("raw", ())]
+        metadata = (
+            [metadata_file]
+            if metadata_file is not None
+            else [c.path for c in by_role["metadata"] if c.path.parent in roots.get("raw", ())]
+        )
         explicit_rna = set()
         for candidate in candidates:
             dna = candidate.path.parent.name
@@ -841,6 +892,7 @@ def _actual_plan(
         report_version=report_version,
         cnv_source=cnv_source,
         cnv_solution=cnv_solution,
+        metadata_file=metadata_file,
     )
 
 

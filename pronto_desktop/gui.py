@@ -578,6 +578,24 @@ class MainWindow(QMainWindow):
             options.setColumnStretch(column, 1)
             widget.currentIndexChanged.connect(self._import_options_changed)
         self.advanced_import = QWidget()
+        self.metadata_file = QLineEdit()
+        self.metadata_file.setReadOnly(True)
+        self.metadata_file.setObjectName("run-metadata-file")
+        self.metadata_file.setAccessibleName("Utfylt metadatafil for valgt kjøring")
+        self.metadata_file.setPlaceholderText("Valgfri UTF-8-fil for én kjøring")
+        self.metadata_file.textChanged.connect(self._folders_changed)
+        self.metadata_file_button = button("Velg fil …", "choose-run-metadata-file")
+        self.metadata_file_button.clicked.connect(self._choose_metadata_file)
+        self.clear_metadata_button = button("Fjern valg", "clear-run-metadata-file")
+        self.clear_metadata_button.clicked.connect(self.metadata_file.clear)
+        metadata_label = label("Metadatafil")
+        metadata_label.setBuddy(self.metadata_file)
+        options.addWidget(metadata_label, 2, 0, 1, 3)
+        metadata_row = QHBoxLayout()
+        metadata_row.addWidget(self.metadata_file, 1)
+        metadata_row.addWidget(self.metadata_file_button)
+        metadata_row.addWidget(self.clear_metadata_button)
+        options.addLayout(metadata_row, 3, 0, 1, 3)
         self.advanced_import.setLayout(options)
         self.advanced_import.hide()
         advanced = button("Avansert", "advanced-import-options")
@@ -588,6 +606,7 @@ class MainWindow(QMainWindow):
         inner_layout.addWidget(foldercard)
         self.plan_summary = label("Legg til mapper, og velg Kontroller filer.", muted=True)
         self.plan_hint = label("", muted=True)
+        self.plan_hint.setWordWrap(True)
         self.plan_hint.setAccessibleName("Veiledning for prøvevalg")
         self.plan_hint.hide()
         summary_labels = QVBoxLayout()
@@ -976,6 +995,8 @@ class MainWindow(QMainWindow):
         for widget in (*self.folder_fields, *self.folder_buttons):
             widget.setEnabled(not busy)
         self.more_folders_button.setEnabled(not busy)
+        self.metadata_file_button.setEnabled(not busy)
+        self.clear_metadata_button.setEnabled(not busy and bool(self.metadata_file.text()))
         for widget in (self.import_mode, self.run_query, self.run_root_button):
             widget.setEnabled(not busy)
         self.report_version.setEnabled(not busy)
@@ -1003,6 +1024,16 @@ class MainWindow(QMainWindow):
                 self._folders_changed()
             else:
                 self.folder_fields[index].setText(directory)
+
+    def _choose_metadata_file(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Velg utfylt metadatafil for kjøringen",
+            self.metadata_file.text(),
+            "Metadata (*.txt *.tsv *.csv)",
+        )
+        if path:
+            self.metadata_file.setText(path)
 
     def _choose_run_root(self):
         directory = QFileDialog.getExistingDirectory(
@@ -1044,6 +1075,7 @@ class MainWindow(QMainWindow):
     def _folders_changed(self) -> None:
         self._source_revision += 1
         self._folder_button_text()
+        self.clear_metadata_button.setEnabled(bool(self.metadata_file.text()))
         if self.plan is not None:
             self.plan = None
             self.plan_tree.clear()
@@ -1087,11 +1119,7 @@ class MainWindow(QMainWindow):
             return
         from pronto_ingest.discovery import discover_folders
 
-        options = {
-            "report_version": self.report_version.currentData(),
-            "cnv_source": self.cnv_source.currentData(),
-            "cnv_solution": self.cnv_solution.currentData(),
-        }
+        options = self._discovery_options()
         revision = self._source_revision
         previous_plan = self.plan
 
@@ -1129,6 +1157,16 @@ class MainWindow(QMainWindow):
             lambda runs: self._run_found(runs, root, revision),
         )
 
+    def _discovery_options(self):
+        options = {
+            "report_version": self.report_version.currentData(),
+            "cnv_source": self.cnv_source.currentData(),
+            "cnv_solution": self.cnv_solution.currentData(),
+        }
+        if self.metadata_file.text():
+            options["metadata_file"] = self.metadata_file.text()
+        return options
+
     def _run_found(self, runs, root, revision):
         if revision != self._source_revision:
             return
@@ -1151,11 +1189,7 @@ class MainWindow(QMainWindow):
             field.setText(str(selected.folders[index]) if index < len(selected.folders) else "")
             field.blockSignals(False)
         self._folder_button_text()
-        options = {
-            "report_version": self.report_version.currentData(),
-            "cnv_source": self.cnv_source.currentData(),
-            "cnv_solution": self.cnv_solution.currentData(),
-        }
+        options = self._discovery_options()
         previous_plan = self.plan
 
         def discover(progress, cancel):
@@ -1352,7 +1386,10 @@ class MainWindow(QMainWindow):
             self.plan_hint.setText(
                 "Kontroller avvikene under prøvene."
                 if self.plan.reports
-                else "Fant ingen prøver. Kontroller at riktig kjøringsmappe er valgt."
+                else next(
+                    iter(self.plan.warnings),
+                    "Fant ingen prøver. Kontroller at riktig kjøringsmappe er valgt.",
+                )
             )
         self.plan_hint.show()
 

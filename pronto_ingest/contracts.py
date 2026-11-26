@@ -78,6 +78,7 @@ class DiscoveryPlan:
     report_version: str = ""
     cnv_source: str = "merged"
     cnv_solution: str = "main"
+    metadata_file: Path | None = None
 
 
 @dataclass(frozen=True)

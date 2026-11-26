@@ -58,6 +58,14 @@ Se [drift og gjenoppretting](operations.md) før oppgradering.
 6. Velg **Importer valgte**. Hver prøve valideres og arkiveres før rapporten
    opprettes. Avbrudd fjerner ikke prøver som allerede ble fullført.
 
+Hvis filkontrollen melder at metadatafilen har overskrifter, men ingen datarader,
+er den en tom mal. Behold råmappen for kjøringen valgt og bruk
+**Avansert → Metadatafil → Velg fil** til å velge den utfylte metadataeksporten
+for akkurat denne kjøringen (`.txt`, `.tsv` eller `.csv` i UTF-8). Velg
+**Kontroller filer** på nytt. Valget gjelder den ene kjøringen. **Fjern valg**
+går tilbake til metadata fra råmappen. En historisk samlefil må avgrenses til
+kjøringen før bruk. Prøve- og kjørings-ID må stemme med kildefilene.
+
 Kildemappene endres ikke. En identisk import lager ikke en rapportdublett.
 Endret kildeinnhold for en eksisterende rapport gir konflikt som må avklares.
 Søket er forbedret med lokale mellomlagre og en kildeindeks; importen kontrollerer
