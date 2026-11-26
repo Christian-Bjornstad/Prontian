@@ -1902,6 +1902,11 @@ button {
   font: inherit;
   padding: 0.45rem 0.7rem;
 }
+.cnv-source-picker select {
+  min-width: 0;
+  max-width: 100%;
+  width: min(34rem, 100%);
+}
 .signature-details {
   margin: 1rem 0;
   border: 1px solid #d5dfe7;

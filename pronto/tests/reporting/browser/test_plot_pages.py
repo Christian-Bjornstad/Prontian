@@ -57,3 +57,38 @@ def test_long_pdf_page_navigation_and_collapsed_signature(browser):
             assert errors == []
         finally:
             context.close()
+
+
+def test_many_cnv_images_use_one_source_picker(browser):
+    report = build_report()
+    attachments = tuple(
+        dict(
+            report.attachments[0],
+            assetId=f"plot-{index}",
+            name=f"Panel {index}.png",
+            description="CNV",
+        )
+        for index in range(1, 56)
+    )
+    report = replace(report, attachments=attachments)
+    review = migrate_review_state_to_v3(draft_review(report))
+    html = render_html(
+        report,
+        review,
+        inline_assets=True,
+        plot_images={asset["assetId"]: (("image/png", ONE_PIXEL_PNG),) for asset in attachments},
+    )
+    with _serve(html) as url:
+        context, page, errors, _ = _page(browser, html)
+        try:
+            page.goto(url)
+            page.locator("#tab-cnv-plots").click()
+            page.locator('[data-cnv-view="plots"]').click()
+            picker = page.get_by_label("CNV plot source", exact=True)
+            assert picker.locator("option").count() == 55
+            assert not page.locator("[data-v3-plot]").count()
+            picker.select_option(label="Panel 55.png")
+            assert page.locator(".cnv-slide:visible figcaption").inner_text() == "Panel 55.png"
+            assert errors == []
+        finally:
+            context.close()

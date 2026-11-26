@@ -257,20 +257,32 @@ def cnv_plots(report, images):
                     )
     if not groups:
         return '<p class="empty-state">No CNV plots provided.</p>'
-    buttons = "".join(
-        f'<button type="button" data-v3-plot="cnv-slide-{i}" aria-pressed="{str(i == 0).lower()}">{shown(name)}</button>'
-        for i, (name, _) in enumerate(groups)
-    )
+    if len(groups) > 9:
+        options = "".join(
+            f'<option value="cnv-slide-{i}">{shown(name)}</option>'
+            for i, (name, _) in enumerate(groups)
+        )
+        controls = (
+            '<div class="plot-document-controls cnv-source-picker">'
+            '<label for="cnv-plot-source">CNV plot source</label>'
+            f'<select id="cnv-plot-source" data-cnv-plot-source>{options}</select>'
+            f"<span>{len(groups)} sources</span></div>"
+        )
+    else:
+        buttons = "".join(
+            f'<button type="button" data-v3-plot="cnv-slide-{i}" aria-pressed="{str(i == 0).lower()}">{shown(name)}</button>'
+            for i, (name, _) in enumerate(groups)
+        )
+        controls = (
+            '<div class="plot-switcher" role="group" aria-label="Select CNV plot">'
+            + buttons
+            + "</div>"
+        )
     slides = "".join(
         f'<div class="cnv-slide" id="cnv-slide-{i}"{" hidden" if i else ""}>{body}</div>'
         for i, (_, body) in enumerate(groups)
     )
-    return (
-        '<div class="plot-switcher" role="group" aria-label="Select CNV plot">'
-        + buttons
-        + "</div>"
-        + slides
-    )
+    return controls + slides
 
 
 def rna_plots(report, images):
