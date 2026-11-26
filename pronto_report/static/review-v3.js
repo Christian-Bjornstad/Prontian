@@ -1,3 +1,12 @@
+function showCnvPlot(id) {
+  document.querySelectorAll(".cnv-slide").forEach((slide) => {
+    slide.hidden = slide.id !== id;
+  });
+  document.querySelectorAll("[data-v3-plot]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.v3Plot === id));
+  });
+}
+
 document.addEventListener("click", (event) => {
   const step = event.target.closest("[data-plot-step]");
   if (step) {
@@ -26,16 +35,13 @@ document.addEventListener("click", (event) => {
       .forEach((b) => b.setAttribute("aria-pressed", String(b === view)));
   }
   const plot = event.target.closest("[data-v3-plot]");
-  if (plot) {
-    document.querySelectorAll(".cnv-slide").forEach((slide) => {
-      slide.hidden = slide.id !== plot.dataset.v3Plot;
-    });
-    document
-      .querySelectorAll("[data-v3-plot]")
-      .forEach((b) => b.setAttribute("aria-pressed", String(b === plot)));
-  }
+  if (plot) showCnvPlot(plot.dataset.v3Plot);
 });
 document.addEventListener("change", (event) => {
+  if (event.target.matches("[data-cnv-plot-source]")) {
+    showCnvPlot(event.target.value);
+    return;
+  }
   if (!event.target.matches("[data-plot-page-select]")) return;
   const select = event.target,
     documentPanel = select.closest(".plot-document");

@@ -49,6 +49,9 @@ Se [drift og gjenoppretting](operations.md) før oppgradering.
    kjøringsmappene. Skriv `261021`, `20261021`, `2026-10-21` eller full kjørings-ID.
 2. Velg **Kontroller filer**. Ved flere kjøringer på datoen velger du riktig ID.
    Søket leser mapper inntil tre nivåer ned og stopper ved kjøringsgrensene.
+   Resultatet åpnes automatisk med kildefeltene slått sammen. **Vis kilder**
+   åpner feltene igjen hvis du trenger å endre noe. Merknader står før
+   gruppen **Andre filer**, som kan utvides ved behov.
 3. Alternativet **Mapper** lar deg velge én til fem separate kildemapper.
 4. Kontroller rapportversjon og CNV-kilde. Automatisk valg bruker tilgjengelig
    QC-grunnlag for prøven, deretter nyere/tidligere pre-QC og rådata.
@@ -87,6 +90,9 @@ nettleseren. Velg rapport og åpne redigering. Småvarianter, CNV, RNA, QC og
 rapporttekst deler samme vurdering. Include/Exclude, klassifisering, IGV-QC og
 Report highlight har hver sin betydning. Ekskluderte funn tas ikke med bare
 fordi highlight er valgt.
+
+I **CNV review → Plots** samles store bildesett i en filvelger. For PDF-er med
+flere sider velger du først kilde og deretter side.
 
 **Save** oppdaterer arbeidskladden. **Finalize** bevarer en endelig revisjon.
 **Start new revision** åpner en ny kladd fra en bevart versjon. Ved konflikt

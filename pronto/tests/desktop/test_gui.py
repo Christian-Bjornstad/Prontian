@@ -319,6 +319,26 @@ def test_choose_and_clear_run_metadata(window, plan, qtbot, monkeypatch, tmp_pat
     assert not window.import_button.isEnabled()
 
 
+def test_scan_shows_results_first_and_keeps_sources_editable(window, plan, qtbot):
+    window.navigate(1)
+    window.folder_fields[0].setText(str(plan.folders[0]))
+    window.more_folders_button.setChecked(True)
+    window.resize(1100, 760)
+    blocked = replace(plan, reports=(), warnings=("Metadatafilen inneholder ingen datarader.",))
+    window._scan_finished(blocked, window._source_revision)
+    qtbot.waitUntil(lambda: window.plan_tree.visibleRegion().boundingRect().height() >= 160)
+
+    assert window.plan_tree.topLevelItem(0).text(0) == "Merknad"
+    assert not window.folder_fields[0].isVisible()
+    assert "ingen datarader" in window.plan_hint.text()
+    assert not window.import_button.isEnabled()
+
+    window.source_toggle.click()
+    assert window.folder_fields[0].isVisible()
+    assert window.folder_fields[0].text() == str(plan.folders[0])
+    assert window.plan is blocked
+
+
 def test_parent_folder_and_explicit_source_options_run_in_worker(window, plan, qtbot, monkeypatch):
     import pronto_ingest.discovery as discovery
 

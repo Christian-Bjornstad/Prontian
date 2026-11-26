@@ -454,17 +454,33 @@ class MainWindow(QMainWindow):
 
     def _import_page(self) -> QWidget:
         page, layout = self._page("Importer kjøring", "")
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
+        self.import_scroll = QScrollArea()
+        self.import_scroll.setWidgetResizable(True)
         inner = QWidget()
         inner.setObjectName("page")
         inner_layout = QVBoxLayout(inner)
         inner_layout.setContentsMargins(0, 0, 4, 0)
         inner_layout.setSpacing(12)
-        foldercard, contents = card()
+        foldercard, source_card = card()
+        foldercard.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         heading = QHBoxLayout()
         heading.addWidget(label("Kilder", section=True))
         heading.addStretch()
+        self.source_editor = QWidget()
+        self.source_toggle = button("Skjul kilder", "toggle-import-sources")
+        self.source_toggle.setCheckable(True)
+        self.source_toggle.setChecked(True)
+        self.source_toggle.toggled.connect(self._toggle_source_editor)
+        self.source_modes = QWidget()
+        source_modes = QHBoxLayout(self.source_modes)
+        source_modes.setContentsMargins(0, 0, 0, 0)
+        heading.addWidget(self.source_modes)
+        heading.addWidget(self.source_toggle)
+        source_card.addLayout(heading)
+        contents = QVBoxLayout(self.source_editor)
+        contents.setContentsMargins(0, 0, 0, 0)
+        contents.setSpacing(10)
+        source_card.addWidget(self.source_editor)
         preferences = getattr(self.runtime, "import_preferences", lambda: {})()
         self.import_mode = QComboBox()
         self.import_mode.setObjectName("import-source-mode")
@@ -473,12 +489,11 @@ class MainWindow(QMainWindow):
         self.import_mode.addItem("Kjøringsdato", "run")
         self.import_mode.addItem("Mapper", "folders")
         self.import_mode.setCurrentIndex(0 if preferences.get("source_root") else 1)
-        heading.addWidget(self.import_mode)
+        source_modes.addWidget(self.import_mode)
         self.more_folders_button = button("Flere mapper", "more-folders")
         self.more_folders_button.setCheckable(True)
         self.more_folders_button.toggled.connect(self._toggle_folders)
-        heading.addWidget(self.more_folders_button)
-        contents.addLayout(heading)
+        source_modes.addWidget(self.more_folders_button)
         self.run_sources = QWidget()
         run_form = QFormLayout(self.run_sources)
         run_form.setContentsMargins(0, 0, 0, 0)
@@ -635,8 +650,8 @@ class MainWindow(QMainWindow):
         self.plan_tree.header().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.plan_tree.header().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         inner_layout.addWidget(self.plan_tree, 1)
-        scroll.setWidget(inner)
-        layout.addWidget(scroll, 1)
+        self.import_scroll.setWidget(inner)
+        layout.addWidget(self.import_scroll, 1)
         actions = QHBoxLayout()
         self.scan_button = button("Kontroller filer", "scan-folders")
         self.scan_button.setToolTip("Søk etter kilder og bygg importplan (Ctrl+R)")
@@ -1059,6 +1074,13 @@ class MainWindow(QMainWindow):
                 widget.setVisible(expanded)
         self._folder_button_text()
 
+    def _toggle_source_editor(self, expanded: bool) -> None:
+        self.source_editor.setVisible(expanded)
+        self.source_modes.setVisible(expanded)
+        title = "Skjul kilder" if expanded else "Vis kilder"
+        self.source_toggle.setText(title)
+        self.source_toggle.setAccessibleName(title)
+
     def _folder_button_text(self) -> None:
         count = sum(bool(field.text().strip()) for field in self.folder_fields[1:])
         text = "Færre mapper" if self.more_folders_button.isChecked() else "Flere mapper"
@@ -1220,6 +1242,8 @@ class MainWindow(QMainWindow):
             self.plan_summary.setText("Velg en eksisterende mappe.")
             return
         self.show_plan(plan)
+        self.source_toggle.setChecked(False)
+        self.import_scroll.verticalScrollBar().setValue(0)
 
     def show_plan(self, plan: Any) -> None:
         self.plan = plan
@@ -1271,6 +1295,10 @@ class MainWindow(QMainWindow):
                 child.setToolTip(1, self._issue_help(issue))
                 child.setToolTip(3, self._issue_help(issue))
                 root.addChild(child)
+        for warning in plan.warnings:
+            item = QTreeWidgetItem(["Merknad", str(warning), "", "Kontroller"])
+            item.setToolTip(1, str(warning))
+            self.plan_tree.addTopLevelItem(item)
         if plan.unassigned:
             group = QTreeWidgetItem(["Andre filer", str(len(plan.unassigned)), "", "Ikke brukt"])
             group.setToolTip(0, "Filer som ikke inngår i det valgte rapportgrunnlaget.")
@@ -1286,10 +1314,6 @@ class MainWindow(QMainWindow):
                 )
                 item.setToolTip(1, str(candidate.path))
                 group.addChild(item)
-        for warning in plan.warnings:
-            item = QTreeWidgetItem(["Merknad", str(warning), "", "Kontroller"])
-            item.setToolTip(1, str(warning))
-            self.plan_tree.addTopLevelItem(item)
         self.plan_tree.blockSignals(False)
         self._update_plan_summary()
         self._set_busy(False)
